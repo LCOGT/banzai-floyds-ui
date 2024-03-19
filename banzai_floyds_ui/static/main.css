@@ -1,0 +1,15 @@
+.navbar {
+    background-color: #0b3053;
+    margin: 0%;
+    padding: 0%;
+    border: 1px solid rgb(0, 0, 0);
+}
+
+.title1 {
+    font-family: 'sans-serif';
+}
+
+.logo {
+    height: 50px;
+    margin-left: 0.75rem !important;
+}

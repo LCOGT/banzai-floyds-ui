@@ -1,0 +1,19 @@
+{%extends "base.html"%}
+{%load plotly_dash%}
+
+{%block title%}BANZAI FLOYDS{%endblock%}
+
+{%block content%}
+
+<h1>BANZAI-FLOYDS Reprocessing</h1>
+
+<p></p>
+<div class="card border-dark">
+    <div class="card-body">
+        <div class="{%plotly_class name=" banzai-floyds" template_type="div-direct" %}">
+            {%plotly_direct name="banzai-floyds"%}
+        </div>
+    </div>
+</div>
+<p></p>
+{%endblock%}
