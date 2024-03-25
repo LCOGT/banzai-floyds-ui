@@ -2,7 +2,6 @@ asgiref==3.7.2
 astropy==6.0.0
 astropy-iers-data==0.2024.3.18.0.29.47
 async-timeout==4.0.3
-banzai_floyds_ui @ file:///banzai-floyds-ui
 beautifulsoup4==4.12.3
 blinker==1.7.0
 certifi==2024.2.2
@@ -45,5 +44,6 @@ tenacity==8.2.3
 typing_extensions==4.10.0
 urllib3==2.2.1
 Werkzeug==3.0.1
+whitenoise==6.6.0
 zope.event==5.0
 zope.interface==6.2

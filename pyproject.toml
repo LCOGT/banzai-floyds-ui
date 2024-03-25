@@ -26,5 +26,6 @@ dependencies = [
   "dpd_static_support",
   "fontawesomefree",
   "requests",
-  "django_redis"
+  "django_redis",
+  "whitenoise"
 ]
