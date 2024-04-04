@@ -1,0 +1,27 @@
+.navbar {
+    background-color: #0b3053;
+    margin: 0%;
+    padding: 0%;
+    border: 1px solid rgb(0, 0, 0);
+}
+
+.title1 {
+    font-family: 'sans-serif';
+}
+
+.logo {
+    height: 50px;
+    margin-left: 0.75rem !important;
+}
+
+div.form-group#username-group {
+    padding-top: 0.1rem;
+    margin-left: 1rem;
+    padding-right: 1rem;
+}
+div.form-group#password-group {
+    padding-top: 0.1rem;
+    margin-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 0.1rem;
+}
