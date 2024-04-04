@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "wheel", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["banzai_floyds_ui*"]
+
+[tool.setuptools.package-data]
+"banzai_floyds_ui" = ["static/*"]
+"banzai_floyds_ui.gui" = ["templates/*"]
+
+[project]
+dynamic = ["version"]
+name = "banzai_floyds_ui"
+dependencies = [
+  "django",
+  "dash",
+  "plotly",
+  "django-plotly-dash",
+  "astropy",
+  "lcogt_logging",
+  "gunicorn",
+  "gevent",
+  "django-rest-framework",
+  "django-bootstrap4",
+  "dpd_static_support",
+  "fontawesomefree",
+  "requests",
+  "django_redis",
+  "whitenoise"
+]
