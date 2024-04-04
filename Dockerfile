@@ -22,5 +22,5 @@ CMD [ \
     "--timeout=300", \
     "--access-logfile=-", \
     "--error-logfile=-", \
-    "banzai_floyds_ui.banzai_floyds_gui.wsgi:application" \
+    "banzai_floyds_ui.gui.wsgi:application" \
     ]
