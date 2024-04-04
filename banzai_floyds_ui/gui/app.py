@@ -37,21 +37,24 @@ app.layout = html.Div(
                        [dash.dependencies.Input('date-range-picker', 'start_date'),
                         dash.dependencies.Input('date-range-picker', 'end_date')])
 def callback_dropdown_files(*args, **kwargs):
+    start_date, end_date = args[0:2]
     # pylint: disable=unused-argument
     'Callback to generate test data on each change of the dropdown'
     # Probably want to use the dash callback loading css here
     # https://dash.plotly.com/loading-states
     # See also: https://codepen.io/chriddyp/pen/brPBPO
     response = requests.get(settings.ARCHIVE_URL,
-                            params={'start': args[0],
-                                    'end': args[1],
+                            params={'start': start_date,
+                                    'end': end_date,
                                     'public': True,
                                     'limit': 150,
                                     'instrument_id': 'en06',
                                     'RLEVEL': 91})
-    logger.info(response)
-    # TODO: Show a loading spinner while the request is being made
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"Failed to fetch data from archive: {e}. {response.content}")
+        return
     data = response.json()['results']
     return [{'label': row['filename'], 'value': row['id']} for row in data]
 
@@ -60,7 +63,8 @@ def callback_dropdown_files(*args, **kwargs):
     dash.dependencies.Output('image-plot-output-div', 'children'),
     dash.dependencies.Input('file-list-dropdown', 'value'))
 def callback_image_plot(*args, **kwargs):
-    if args[0] is None:
+    file_to_plot = args[0]
+    if file_to_plot is None:
         return None
     if kwargs['session_state'].get('auth_token') is not None:
         archive_header = {'Authorization': f'Token {kwargs["session_state"]["auth_token"]}'}
@@ -83,6 +87,5 @@ def callback_image_plot(*args, **kwargs):
     fig = dict(data=[trace], layout=layout)
     image_plot = dcc.Graph(id='image-graph1', figure=fig, style={'display': 'inline-block',
                                                                  'width': '100%', 'height': '100%;'})
-    children = image_plot
-
-    return [children]
+    # Return the plot as the child of the output container div
+    return [image_plot]

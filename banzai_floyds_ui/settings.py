@@ -61,12 +61,12 @@ MIDDLEWARE = [
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
-ROOT_URLCONF = 'banzai_floyds_ui.banzai_floyds_gui.urls'
+ROOT_URLCONF = 'banzai_floyds_ui.gui.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'banzai_floyds_ui', 'banzai_floyds_gui', 'templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'banzai_floyds_ui', 'gui', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -79,7 +79,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'banzai_floyds_ui.banzai_floyds_gui.wsgi.application'
+WSGI_APPLICATION = 'banzai_floyds_ui.gui.wsgi.application'
 
 if os.environ.get('REDIS_URL') is None:
     CACHES = {
@@ -174,7 +174,7 @@ PLOTLY_DASH = {
     "view_decorator": None,  # Specify a function to be used to wrap each of the dpd view functions
     "cache_arguments": True,  # True for cache, False for session-based argument propagation
     # "serve_locally": True, # True to serve assets locally, False to use their unadulterated urls (eg a CDN)
-    "stateless_loader": "banzai_floyds_ui.banzai_floyds_gui.scaffold.loader",
+    "stateless_loader": "banzai_floyds_ui.gui.scaffold.loader",
 }
 
 PLOTLY_COMPONENTS = [
@@ -183,9 +183,9 @@ PLOTLY_COMPONENTS = [
     'dpd_static_support',
 ]
 
-ARCHIVE_URL = 'https://archive-api.lco.global/frames'
+ARCHIVE_URL = os.getenv('ARCHIVE_URL', 'https://archive-api.lco.global/frames')
 
-OBSPORTAL_AUTH_URL = 'https://observe.lco.global/api/api-token-auth/'
+OBSPORTAL_AUTH_URL = os.getenv('AUTH_PORTAL_URL', 'https://observe.lco.global/api/api-token-auth/')
 
 LOGGING = {
     'version': 1,
