@@ -25,3 +25,11 @@ div.form-group#password-group {
     padding-right: 1rem;
     padding-bottom: 0.1rem;
 }
+
+#site-picker .Select--single .Select-placeholder {
+    padding-top: 0.4rem;
+}
+
+#site-picker .Select--single .Select-value {
+    padding-top: 0.4rem;
+}

@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from banzai_floyds_ui.gui.views import banzai_floyds_view, login_view
+from banzai_floyds_ui.gui.views import banzai_floyds_view, login_view, logout_view
 
 
 urlpatterns = [
@@ -23,5 +23,6 @@ urlpatterns = [
     path('', include('banzai_floyds_ui.api.urls')),
     path('banzai-floyds', banzai_floyds_view, name="banzai-floyds"),
     path('login', login_view, name="login"),
+    path('logout', logout_view, name="logout"),
     path('django_plotly_dash', include('django_plotly_dash.urls')),
 ]

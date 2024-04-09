@@ -27,5 +27,6 @@ dependencies = [
   "fontawesomefree",
   "requests",
   "django_redis",
-  "whitenoise"
+  "whitenoise",
+  "httpx"
 ]
