@@ -183,7 +183,7 @@ PLOTLY_COMPONENTS = [
     'dpd_static_support',
 ]
 
-ARCHIVE_URL = os.getenv('ARCHIVE_URL', 'https://archive-api.lco.global/frames')
+ARCHIVE_URL = os.getenv('ARCHIVE_URL', 'https://archive-api.lco.global/frames/')
 
 OBSPORTAL_AUTH_URL = os.getenv('AUTH_PORTAL_URL', 'https://observe.lco.global/api/api-token-auth/')
 

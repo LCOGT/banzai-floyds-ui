@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
-from django.contrib.auth.forms import AuthenticationForm
+from banzai_floyds_ui.gui.forms import LoginForm
 from django.conf import settings
 import requests
 
@@ -18,17 +18,26 @@ def banzai_floyds_view(request, template_name="floyds.html", **kwargs):
 
 @require_http_methods(["POST"])
 def login_view(request):
-    form = AuthenticationForm(request, data=request.POST)
+    form = LoginForm(request.POST)
     if form.is_valid():
         username = form.cleaned_data.get('username')
         password = form.cleaned_data.get('password')
         response = requests.post(settings.OBSPORTAL_AUTH_URL,
                                  data={'username': username,
                                        'password': password})
-        if response.status_code != requests.HTTPStatus.OK:
+        if not response.ok:
             form.add_error(None, 'Unable to autheticate. Check your username and password.')
             return render(request, 'floyds.html', {'form': form})
         else:
             request.session['auth_token'] = response.json()['token']
             request.session['username'] = username
             return render(request, 'floyds.html')
+
+
+@require_http_methods(["POST"])
+def logout_view(request):
+    if 'auth_token' in request.session:
+        del request.session['auth_token']
+    if 'username' in request.session:
+        del request.session['username']
+    return render(request, 'floyds.html')
