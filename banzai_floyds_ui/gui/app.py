@@ -61,11 +61,11 @@ def callback_dropdown_files(*args, **kwargs):
     start_date, end_date = args[0:2]
 
     # Loop over sites to unless one is chosen
-    site_id = args[2]
-    if site_id is None:
-        site_ids = ['en06', 'en12']
+    instrument_id = args[2]
+    if instrument_id is None:
+        instrument_ids = ['en06', 'en12']
     else:
-        site_ids = [site_id]
+        instrument_ids = [instrument_id]
 
     if kwargs['session_state'].get('auth_token') is not None:
         archive_header = {'Authorization': f'Token {kwargs["session_state"]["auth_token"]}'}
@@ -73,8 +73,8 @@ def callback_dropdown_files(*args, **kwargs):
         archive_header = None
 
     request_params = [{'start': start_date, 'end': end_date, 'public': True, 'limit': 150,
-                       'instrument_id': site_id, 'RLEVEL': 91}
-                      for site_id in site_ids]
+                       'instrument_id': instrument_id, 'RLEVEL': 91}
+                      for instrument_id in instrument_ids]
 
     responses = asyncio.run(fetch_all(archive_header, request_params))
     results = []
