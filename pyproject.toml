@@ -28,5 +28,7 @@ dependencies = [
   "requests",
   "django_redis",
   "whitenoise",
-  "httpx"
+  "httpx",
+  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@output-dataproduct-frameid",
+  "scipy"
 ]
