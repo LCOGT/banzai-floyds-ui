@@ -13,7 +13,7 @@ You can run a local development version either by running
 
 ```
 python banzai_floyds_ui/manage.py migrate
-python banzai_floyds_ui/manage.py runserver
+python banzai_floyds_ui/manage.py runserver 8080
 ```
 or via the docker file using
 ```
