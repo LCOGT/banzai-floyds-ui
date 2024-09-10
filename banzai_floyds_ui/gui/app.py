@@ -12,33 +12,18 @@ import httpx
 import asyncio
 from banzai_floyds.arc_lines import used_lines as arc_lines
 from banzai_floyds.orders import orders_from_fits
-from banzai_floyds.wavelengths import WavelengthSolution, identify_peaks, refine_peak_centers
-from banzai_floyds.extract import get_wavelength_bins, extract, bin_data
 import numpy as np
 from scipy.interpolate import LinearNDInterpolator
 from plotly.subplots import make_subplots
-from banzai_floyds.utils.fitting_utils import gauss
-from banzai_floyds.matched_filter import optimize_match_filter
-from banzai_floyds.extract import profile_gauss_fixed_width
-from scipy.optimize import curve_fit
+from astropy.table import Table
+from banzai_floyds_ui.gui.plots import COLORMAP, make_2d_sci_plot, LAVENDER
+from banzai_floyds_ui.gui.utils.header_utils import header_to_polynomial
 
 
 logger = logging.getLogger(__name__)
 
 dashboard_name = 'banzai-floyds'
 app = DjangoDash(name=dashboard_name)
-
-COLORMAP = [
-    [0, '#fff7fb'],
-    [0.125, '#ece7f2'],
-    [0.25, '#d0d1e6'],
-    [0.375, '#a6bddb'],
-    [0.5, '#74a9cf'],
-    [0.625, '#3690c0'],
-    [0.75, '#0570b0'],
-    [0.875, '#045a8d'],
-    [1, '#023858']
-]
 
 
 def layout():
@@ -201,7 +186,7 @@ def make_arc_2d_plot(arc_frame_hdu, arc_filename):
     layout['yaxis'] = dict(title='y (pixel)')
     fig = dict(data=figure_data, layout=layout)
     image_plot = dcc.Graph(id='image-graph1', figure=fig, style={'display': 'inline-block',
-                                                                 'width': '100%', 'height': '100%;'})
+                                                                 'width': '100%', 'height': '100%;'},)
     return image_plot
 
 
@@ -229,38 +214,8 @@ def get_related_frame(frame_id, archive_header, related_frame_key):
     return download_frame(archive_header, params=params, list_endpoint=True), related_frame_filename
 
 
-def calculate_residuals(wavelengths, flux, flux_errors, lines):
-    residuals = []
-    residuals_wavelengths = []
-    peaks = np.array(identify_peaks(flux, flux_errors, 4, 10, snr_threshold=15.0))
-    for line in lines:
-        if line['wavelength'] > np.max(wavelengths) or line['wavelength'] < np.min(wavelengths):
-            continue
-        closest_peak = peaks[np.argmin(np.abs(wavelengths[peaks] - line['wavelength']))]
-        closest_peak_wavelength = wavelengths[closest_peak]
-        if np.abs(closest_peak_wavelength - line['wavelength']) <= 20:
-            refined_peak = refine_peak_centers(flux, flux_errors, np.array([closest_peak]), 4)[0]
-            if not np.isfinite(refined_peak):
-                continue
-            if np.abs(refined_peak - closest_peak) > 5:
-                continue
-            refined_peak = np.interp(refined_peak, np.arange(len(wavelengths)), wavelengths)
-            residuals.append(refined_peak - line['wavelength'])
-            residuals_wavelengths.append(line['wavelength'])
-    return np.array(residuals_wavelengths), np.array(residuals)
-
-
 def make_arc_line_plots(arc_frame_hdu):
     """Make a plot for each order showing the arc lines and their residulas"""
-    # TODO: Most of this logic should be pre computed in BANZAI-FLOYDS for performance but this works for now
-    orders = orders_from_fits(arc_frame_hdu['ORDER_COEFFS'].data, arc_frame_hdu['ORDER_COEFFS'].header,
-                              arc_frame_hdu['SCI'].data.shape)
-    wavelengths = WavelengthSolution.from_header(arc_frame_hdu['WAVELENGTHS'].header, orders)
-    wavelength_bins = get_wavelength_bins(wavelengths)
-    binned_data = bin_data(arc_frame_hdu['SCI'].data, arc_frame_hdu['ERR'].data, wavelengths, orders, wavelength_bins)
-    binned_data['background'] = 0.0
-    binned_data['weights'] = 1.0
-    extracted_data = extract(binned_data)
 
     fig = make_subplots(rows=2, cols=2, vertical_spacing=0.02,
                         horizontal_spacing=0.05, shared_xaxes=True)
@@ -272,6 +227,8 @@ def make_arc_line_plots(arc_frame_hdu):
     fig.add_annotation(xref='x domain', yref='y domain', x=0.01, y=0.97, text='Blue Order (order=2)', showarrow=False)
     fig.add_annotation(xref='x2 domain', yref='y2 domain', x=0.01, y=0.97, text='Red Order (order=1)', showarrow=False)
 
+    extracted_data = arc_frame_hdu['EXTRACTED'].data
+    lines_used = arc_frame_hdu['LINESUSED'].data
     plot_column = {2: 1, 1: 2}
     for order in [2, 1]:
         where_order = extracted_data['order'] == order
@@ -302,13 +259,13 @@ def make_arc_line_plots(arc_frame_hdu):
                                      mode='lines',  marker={'color': 'salmon'},
                                      hovertemplate='%{hovertext}<extra></extra>'),
                           row=1, col=plot_column[order])
-        residuals_wavelengths, residuals = calculate_residuals(wavelength,
-                                                               extracted_data['fluxraw'][where_order],
-                                                               extracted_data['fluxrawerr'][where_order],
-                                                               arc_lines)
+        lines_used = arc_frame_hdu['LINESUSED'].data[arc_frame_hdu['LINESUSED'].data['order'] == order]
+        reference_wavelengths = lines_used['reference_wavelength']
 
         residual_hover_text = [f'{line["wavelength"]:0.3f} {line["line_source"]}' for line in arc_lines
-                               if line['wavelength'] in residuals_wavelengths]
+                               if line['wavelength'] in reference_wavelengths]
+        residuals_wavelengths = lines_used['measured_wavelength']
+        residuals = residuals_wavelengths - reference_wavelengths
         fig.add_trace(
             go.Scatter(x=residuals_wavelengths, y=residuals,
                        mode='markers', marker=dict(color='#023858'),
@@ -328,104 +285,7 @@ def make_arc_line_plots(arc_frame_hdu):
     return line_plot
 
 
-def make_2d_sci_plot(frame, filename):
-    zmin, zmax = np.percentile(frame['SCI'].data, [1, 99])
-    trace = go.Heatmap(z=frame['SCI'].data, colorscale=COLORMAP, zmin=zmin, zmax=zmax, hoverinfo='none',
-                       colorbar=dict(title='Data (counts)'))
-
-    layout = dict(title=f'2-D Science Frame: {filename}', margin=dict(t=40, b=50, l=50, r=40),
-                  height=370)
-    layout['legend'] = dict(x=0, y=0.95)
-    layout['xaxis'] = dict(title='x (pixel)')
-    layout['yaxis'] = dict(title='y (pixel)')
-    figure_data = [trace]
-
-    orders = orders_from_fits(frame['ORDER_COEFFS'].data,
-                              frame['ORDER_COEFFS'].header,
-                              frame['SCI'].data.shape)
-    wavelengths = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
-    wavelength_bins = get_wavelength_bins(wavelengths)
-    binned_profile = bin_data(frame['PROFILE'].data,
-                              np.zeros_like(frame['PROFILE'].data),
-                              wavelengths, orders, wavelength_bins)
-    for order in [2, 1]:
-        extract_center = []
-        extract_low = []
-        extract_high = []
-
-        background_upper_start = []
-        background_upper_end = []
-
-        background_lower_start = []
-        background_lower_end = []
-
-        plot_x = []
-
-        for profile_to_fit in binned_profile.groups:
-            if profile_to_fit['order'][0] != order:
-                continue
-            plot_x.append(np.mean(profile_to_fit['x']))
-            # Fit a simple gaussian to the profile to get the center and width
-            best_fit, _ = curve_fit(gauss, profile_to_fit['y'], profile_to_fit['data'],
-                                    [profile_to_fit[np.argmax(profile_to_fit['data'])]['y'],
-                                     5.0], method='lm')
-            extract_center.append(best_fit[0])
-            extract_high.append(best_fit[0] + 2.0 * best_fit[1])
-            extract_low.append(best_fit[0] - 2.0 * best_fit[1])
-
-            background_upper_start.append(best_fit[0] + 3.0 * best_fit[1])
-            background_lower_start.append(best_fit[0] - 3.0 * best_fit[1])
-
-            background_upper_end.append(np.max(profile_to_fit['y']))
-            background_lower_end.append(np.min(profile_to_fit['y']))
-        if order == 2:
-            center_name = 'Extraction Center'
-            center_legend = True
-
-            extraction_name = 'Extraction \u00b12\u03C3'
-            extreaction_legend = True
-
-            background_name = 'Background Region'
-            background_legend = True
-        else:
-            center_name = None
-            center_legend = False
-
-            extraction_name = None
-            extreaction_legend = False
-
-            background_name = None
-            background_legend = False
-
-        figure_data.append(go.Scatter(x=plot_x, y=extract_center,
-                                      mode='lines', line={'color': 'salmon'},
-                                      hoverinfo='skip', name=center_name, showlegend=center_legend))
-        figure_data.append(go.Scatter(x=plot_x, y=extract_high,
-                                      mode='lines', line={'color': 'salmon', 'dash': 'dash'},
-                                      hoverinfo='skip', name=extraction_name, showlegend=extreaction_legend))
-        figure_data.append(go.Scatter(x=plot_x, y=extract_low,
-                                      mode='lines', line={'color': 'salmon', 'dash': 'dash'},
-                                      hoverinfo='skip', showlegend=False))
-        figure_data.append(go.Scatter(x=plot_x, y=background_lower_start,
-                                      mode='lines', line={'color': '#8F0B0B', 'dash': 'dash'},
-                                      hoverinfo='skip', name=background_name, showlegend=background_legend))
-        figure_data.append(go.Scatter(x=plot_x, y=background_lower_end,
-                                      mode='lines', line={'color': '#8F0B0B', 'dash': 'dash'},
-                                      hoverinfo='skip', showlegend=False))
-        figure_data.append(go.Scatter(x=plot_x, y=background_upper_start,
-                                      mode='lines', line={'color': '#8F0B0B', 'dash': 'dash'},
-                                      hoverinfo='skip', showlegend=False))
-        figure_data.append(go.Scatter(x=plot_x, y=background_upper_end,
-                                      mode='lines', line={'color': '#8F0B0B', 'dash': 'dash'},
-                                      hoverinfo='skip', showlegend=False))
-
-    fig = dict(data=figure_data, layout=layout)
-    image_plot = dcc.Graph(id='sci-2d-graph', figure=fig, style={'display': 'inline-block',
-                                                                 'width': '100%', 'height': '550px;'})
-    return image_plot
-
-
-def unfilled_histogram(x, y, color, name=None):
+def unfilled_histogram(x, y, color, name=None, legend=None):
     # I didn't like how the plotly histogram looked so I wrote my own
     x_avgs = (x[1:] + x[:-1]) / 2.0
     x_lows = np.hstack([x[0] + x[0] - x_avgs[0], x_avgs])
@@ -441,39 +301,29 @@ def unfilled_histogram(x, y, color, name=None):
             y_plot.append(y_center / np.max(y))
     show_legend = name is not None
     return go.Scatter(x=x_plot, y=y_plot, mode='lines', line={'color': color}, hoverinfo='skip',
-                      name=name, showlegend=show_legend)
+                      name=name, showlegend=show_legend, legend=legend)
 
 
 def make_profile_plot(sci_2d_frame):
-    layout = dict(title='', margin=dict(t=20, b=20, l=50, r=40), height=720, showlegend=True)
+    layout = dict(title='', margin=dict(t=20, b=20, l=50, r=40), height=720, showlegend=True, shapes=[])
     fig = make_subplots(rows=2, cols=2, vertical_spacing=0.13,
                         subplot_titles=("Profile Cross Section: Blue Order (order=2)",
                                         "Profile Center: Blue Order (order=2)",
                                         "Profile Cross Section: Red Order (order=1)",
                                         "Profile Center: Red Order (order=1)"))
     plot_row = {2: 1, 1: 2}
-
-    orders = orders_from_fits(sci_2d_frame['ORDER_COEFFS'].data,
-                              sci_2d_frame['ORDER_COEFFS'].header,
-                              sci_2d_frame['SCI'].data.shape)
-    # Approximate order center to plot in x pixels
-    order_center = {2: 1000, 1: 1000}
-    x2d, y2d = np.meshgrid(np.arange(sci_2d_frame['SCI'].data.shape[1]), np.arange(sci_2d_frame['SCI'].data.shape[0]))
+    # Define the coordinate refernce plot manually per order
+    reference_axes = {2: 1, 1: 3}
+    # Approximate wavelength center to plot the profile
+    order_center = {1: 7000, 2: 4500}
     for order in [2, 1]:
-        where_order = orders.data == order
-        y_region = y2d[np.logical_and(x2d == order_center[order], where_order)]
-        y_range = slice(np.min(y_region) + 2, np.max(y_region) - 2)
-
-        x_range = slice(order_center[order] - 5, order_center[order] + 5)
-        # Take a +-5 region in x around a central part of the order and median to reject cosmic rays
-        data = sci_2d_frame['SCI'].data[y_range, x_range]
-        data = np.median(data, axis=1)
-
-        # Do the same on the profile extension to show the model
-        profile = sci_2d_frame['PROFILE'].data[y_range, x_range]
-        profile = np.median(profile, axis=1)
-
-        x_plot = y2d[y_range, order_center[order]] - orders.center(order_center[order])[order - 1]
+        binned_data = Table(sci_2d_frame['BINNED2D'].data).group_by(('order', 'wavelength_bin'))
+        # We have to remove the last index here because astropy prepolulates it with the final row in the table so it
+        # knows where to start if you add a new group
+        wavelength_bins = np.array([binned_data[index]['wavelength_bin'] for index in binned_data.groups.indices[:-1]])
+        closest_wavelength_bin = np.argmin(np.abs(wavelength_bins - order_center[order]))
+        data = binned_data[binned_data.groups.indices[closest_wavelength_bin]:
+                           binned_data.groups.indices[closest_wavelength_bin + 1]]
 
         if order == 2:
             model_name = 'Model'
@@ -482,63 +332,52 @@ def make_profile_plot(sci_2d_frame):
             model_name = None
             data_name = None
         fig.add_trace(
-            unfilled_histogram(x_plot, data, '#023858', name=data_name),
+            unfilled_histogram(data['y_order'], data['data'], '#023858', name=data_name, legend='legend'),
             row=plot_row[order], col=1
         )
 
         fig.add_trace(
-            unfilled_histogram(x_plot, profile, 'salmon', name=model_name),
+            unfilled_histogram(data['y_order'], data['weights'], 'salmon', name=model_name, legend='legend'),
             row=plot_row[order], col=1
         )
 
-        wavelengths = WavelengthSolution.from_header(sci_2d_frame['WAVELENGTHS'].header, orders)
-        wavelength_bins = get_wavelength_bins(wavelengths)
-        # Calculate the center of the profile per wavelength bin
-        binned_data = bin_data(sci_2d_frame['SCI'].data,
-                               sci_2d_frame['ERR'].data,
-                               wavelengths, orders, wavelength_bins)
-
-        # Compare to the center of mass of the model
-        binned_profile = bin_data(sci_2d_frame['PROFILE'].data,
-                                  np.zeros_like(sci_2d_frame['PROFILE'].data),
-                                  wavelengths, orders, wavelength_bins)
-
-        x_plot = []
-        y_profile_plot = []
-        y_plot = []
-        for data_to_fit, profile_to_fit in zip(binned_data.groups, binned_profile.groups):
-            if data_to_fit['order'][0] != order:
-                continue
-            # Fit a simple gaussian to the profile to get the center and width
-            best_fit, _ = curve_fit(gauss, data_to_fit['y'], profile_to_fit['data'],
-                                    [profile_to_fit[np.argmax(profile_to_fit['data'])]['y'],
-                                     5.0], method='lm')
-            x_plot.append(np.mean(profile_to_fit['x']))
-            y_profile_plot.append(best_fit[0])
-            # Then refit the data with width from the profile in the same way the pipeline does
-            # TODO: This should really just be stored in the original data file
-            initial_guess = (data_to_fit['y'][np.argmax(data_to_fit['data'])],)
-            best_fit_center, = optimize_match_filter(initial_guess, data_to_fit['data'],
-                                                     data_to_fit['uncertainty'],
-                                                     profile_gauss_fixed_width,
-                                                     data_to_fit['y'],
-                                                     args=(best_fit[1],))
-            y_plot.append(best_fit_center)
-
+        traced_points = sci_2d_frame['PROFILEFITS'].data[sci_2d_frame['PROFILEFITS'].data['order'] == order]
         fig.add_trace(
-            go.Scatter(x=x_plot, y=y_plot, mode='markers', marker={'color': '#023858'},
-                       hoverinfo='skip', showlegend=False),
+            go.Scatter(x=traced_points['wavelength'],
+                       y=traced_points['center'],
+                       mode='markers', marker={'color': '#023858'},
+                       hoverinfo='skip', showlegend=True, legend='legend2'),
             row=plot_row[order], col=2,
             )
+        center_polynomial = header_to_polynomial(sci_2d_frame['PROFILEFITS'].header, 'CTR', order)
+        x_plot = np.arange(center_polynomial.domain[0], center_polynomial.domain[1] + 1, 1.0)
         fig.add_trace(
-            go.Scatter(x=x_plot, y=y_profile_plot, mode='lines', line={'color': 'salmon'},
-                       hoverinfo='skip', showlegend=False),
+            go.Scatter(x=x_plot, y=center_polynomial(x_plot), mode='lines', line={'color': 'salmon'},
+                       hoverinfo='skip', showlegend=True, legend='legend2'),
             row=plot_row[order], col=2,
             )
+        # Add in the extraction center and region and background region lines
+        # We do this based on header keywords, but we really should do it on the binned data
+        extract_center = center_polynomial(order_center[order])
+        width_polynomial = header_to_polynomial(sci_2d_frame['PROFILEFITS'].header, 'WID', order)
+        extract_sigma = width_polynomial(order_center[order])
+        n_extract_sigma = sci_2d_frame['SCI'].header['EXTRTWIN']
+        bkg_lower_n_sigma = sci_2d_frame['SCI'].header['BKWINDW0']
+        bkg_upper_n_sigma = sci_2d_frame['SCI'].header['BKWINDW1']
+        layout['shapes'].append({'type': 'line',
+                                 'x0': extract_center, 'x1': extract_center,
+                                 'y0': -0.2, 'y1': 1.2,
+                                 'name': 'Extraction Center',
+                                 'line': {'color': LAVENDER, 'width': 2},
+                                 'xref': f'x{reference_axes[order]}', 'yref': f'y{reference_axes[order]}'})
+        # Add dummy traces to make the legend... ugh...
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode='lines',
+                                 line={'color': LAVENDER, 'width': 2}, name='Extraction Center', legend='legend',
+                                 showlegend=True), row=plot_row[order], col=1)
 
-    fig.update_yaxes(title_text='Normalized Flux', row=1, col=1)
+    fig.update_yaxes(title_text='Normalized Flux', range=[-0.1, 1.1], row=1, col=1)
     fig.update_xaxes(title_text='y offset from center (pixel)', row=1, col=1)
-    fig.update_yaxes(title_text='Normalized Flux', row=2, col=1)
+    fig.update_yaxes(title_text='Normalized Flux', range=[-0.1, 1.1], row=2, col=1)
     fig.update_xaxes(title_text='y offset from center (pixel)', row=2, col=1)
 
     fig.update_yaxes(title_text='y (pixel)', row=1, col=2)
@@ -546,9 +385,14 @@ def make_profile_plot(sci_2d_frame):
     fig.update_yaxes(title_text='y (pixel)', row=2, col=2)
     fig.update_xaxes(title_text='x (pixel)', row=2, col=2)
 
+    # Split the legends for each subplot
+    layout['legend'] = dict(yref="container", xref='container', y=0.99, x=0.01)
+    layout['legend2'] = dict(yref="container", xref='container', y=0.3, x=0.99)
+
     fig.update_layout(**layout)
     profile_plot = dcc.Graph(id='profile-graph', figure=fig,
-                             style={'display': 'inline-block', 'width': '100%', 'height': '100%;'})
+                             style={'display': 'inline-block', 'width': '100%', 'height': '100%;'},
+                             config={'editable': True, 'edits': {'shapePosition': True}})
     return profile_plot
 
 
