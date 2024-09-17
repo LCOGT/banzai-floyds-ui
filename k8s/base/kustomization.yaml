@@ -7,5 +7,6 @@ resources:
   
 configMapGenerator:
   - name: env
-    envs:
-      - ./settings.env
+    literals:
+      - ARCHIVE_URL=https://archive-api.lco.global/frames/
+      - OBSPORTAL_AUTH_URL=https://observe.lco.global/api/api-token-auth/
