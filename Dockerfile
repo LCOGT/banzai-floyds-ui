@@ -6,9 +6,15 @@ COPY ./pyproject.toml ./dependencies.lock ./
 
 RUN pip install --no-cache -r dependencies.lock
 
+RUN apt-get -y update && apt-get -y install git gcc && \
+    pip install --no-cache-dir "banzai_floyds@git+https://github.com/lcogt/banzai-floyds@output-dataproduct-frameid" && \
+    apt-get -y remove gcc && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
-RUN pip install --no-cache .
+RUN pip install --no-cache-dir .
 
 WORKDIR /banzai-floyds-ui/banzai_floyds_ui
 
