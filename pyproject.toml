@@ -32,3 +32,8 @@ dependencies = [
   "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@output-dataproduct-frameid",
   "scipy"
 ]
+
+[project.optional-dependencies]
+test = [
+    "flask"
+]
