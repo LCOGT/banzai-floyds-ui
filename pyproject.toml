@@ -7,7 +7,7 @@ include = ["banzai_floyds_ui*"]
 
 [tool.setuptools.package-data]
 "banzai_floyds_ui" = ["static/*"]
-"banzai_floyds_ui.gui" = ["templates/*"]
+"banzai_floyds_ui.gui" = ["templates/*", "data/*"]
 
 [project]
 dynamic = ["version"]
@@ -24,6 +24,7 @@ dependencies = [
   "django-rest-framework",
   "django-bootstrap4",
   "dpd_static_support",
+  "dash-bootstrap-components",
   "fontawesomefree",
   "requests",
   "django_redis",

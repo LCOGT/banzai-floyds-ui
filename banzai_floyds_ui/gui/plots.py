@@ -11,7 +11,7 @@ from banzai_floyds.arc_lines import used_lines as arc_lines
 from banzai_floyds.utils.wavelength_utils import WavelengthSolution
 from scipy.interpolate import LinearNDInterpolator
 from banzai_floyds_ui.gui.utils.plot_utils import unfilled_histogram, EXTRACTION_REGION_LINE_ORDER
-from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces
+from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces, plot_extracted_data
 import importlib
 import json
 
@@ -483,24 +483,7 @@ def make_1d_sci_plot(frame_id, archive_header):
         },
         'yaxis6': {'anchor': 'x6', 'domain': [0.0, 0.32], 'exponentformat': 'power'}
     }
-    figure_data = []
-    plot_column = {2: 1, 1: 2}
-    for order in [2, 1]:
-        where_order = frame_data['order'] == order
-        top_row_axis = '' if plot_column[order] == 1 else plot_column[order]
-        figure_data.append(
-            dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['flux'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{top_row_axis}', yaxis=f'y{top_row_axis}')
-        )
-        mid_row_axis = plot_column[order] + 2
-        figure_data.append(
-            dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['fluxraw'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{mid_row_axis}', yaxis=f'y{mid_row_axis}')
-        )
-        bottom_row_axis = plot_column[order] + 4
-        figure_data.append(
-            dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['background'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{bottom_row_axis}', yaxis=f'y{bottom_row_axis}')
-        )
+
+    figure_data = plot_extracted_data(frame_data)
 
     return {'data': figure_data, 'layout': layout}
