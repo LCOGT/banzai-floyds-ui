@@ -327,7 +327,6 @@ def update_extraction_positions(initial_extraction_info, relayout_data, current_
     else:
         order = 1
     center_line = line_index % 7 == 0
-    print(current_extraction_positions)
     if center_line:
         position_delta = relayout_data[key_with_update] - current_extraction_positions[str(order)]['center']
         for line in EXTRACTION_REGION_LINE_ORDER:
@@ -335,5 +334,4 @@ def update_extraction_positions(initial_extraction_info, relayout_data, current_
     else:
         line_id = EXTRACTION_REGION_LINE_ORDER[line_index % 7]
         current_extraction_positions[str(order)][line_id] = relayout_data[key_with_update]
-    print(current_extraction_positions)
     return current_extraction_positions
