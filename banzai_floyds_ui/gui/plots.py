@@ -70,6 +70,7 @@ def make_2d_sci_plot(frame, filename):
         orders = orders_from_fits(frame['ORDER_COEFFS'].data, frame['ORDER_COEFFS'].header,
                                   frame['SCI'].data.shape)
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
+
         wavelenth_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
         wavelengths_polynomial = Legendre(coef=wavelenth_solution.coefficients[order - 1],
                                           domain=wavelenth_solution.domains[order - 1])
