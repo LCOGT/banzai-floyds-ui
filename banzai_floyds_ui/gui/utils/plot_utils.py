@@ -47,11 +47,11 @@ def extraction_region_traces(order_polynomial, center_polynomial, width_polynoma
     extract_center += order_polynomial(x)
     extract_center += center_delta
     extract_high = extract_center + extract_upper * extract_sigma
-    extract_low = extract_center - extract_lower * extract_sigma
+    extract_low = extract_center + extract_lower * extract_sigma
     background_upper_start = extract_center + bkg_right_inner * extract_sigma
-    background_lower_start = extract_center - bkg_left_inner * extract_sigma
+    background_lower_start = extract_center + bkg_left_inner * extract_sigma
     # Let's start with 10 sigma for now as the edge rather than using the whole slit
-    background_lower_end = extract_center - bkg_left_outer * extract_sigma
+    background_lower_end = extract_center + bkg_left_outer * extract_sigma
     background_upper_end = extract_center + bkg_right_outer * extract_sigma
     return x, [extract_center, extract_low, extract_high, background_lower_start, background_upper_start,
                background_lower_end, background_upper_end]
@@ -65,16 +65,16 @@ def plot_extracted_data(frame_data):
         top_row_axis = '' if plot_column[order] == 1 else plot_column[order]
         figure_data.append(
             dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['flux'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{top_row_axis}', yaxis=f'y{top_row_axis}')
+                 line=dict(color='#023858'), mode='lines', xaxis=f'x{top_row_axis}', yaxis=f'y{top_row_axis}')
         )
         mid_row_axis = plot_column[order] + 2
         figure_data.append(
             dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['fluxraw'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{mid_row_axis}', yaxis=f'y{mid_row_axis}')
+                 line=dict(color='#023858'), mode='lines', xaxis=f'x{mid_row_axis}', yaxis=f'y{mid_row_axis}')
         )
         bottom_row_axis = plot_column[order] + 4
         figure_data.append(
             dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['background'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{bottom_row_axis}', yaxis=f'y{bottom_row_axis}')
+                 line=dict(color='#023858'), mode='lines', xaxis=f'x{bottom_row_axis}', yaxis=f'y{bottom_row_axis}')
         )
     return figure_data

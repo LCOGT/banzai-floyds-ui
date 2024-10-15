@@ -4,6 +4,8 @@ import asyncio
 import httpx
 import io
 import requests
+from django.core.cache import cache
+from io import BytesIO
 
 
 async def fetch(url, params, headers):
@@ -39,3 +41,27 @@ def get_related_frame(frame_id, archive_header, related_frame_key):
     related_frame_filename = response.json()['data'][related_frame_key]
     params = {'basename_exact': related_frame_filename}
     return download_frame(archive_header, params=params, list_endpoint=True), related_frame_filename
+
+
+def get_filename(frame_id, frame_data):
+    for row in frame_data:
+        if row['value'] == frame_id:
+            filename = row['label']
+            break
+    return filename
+
+
+def cache_fits(key_name, hdulist):
+    buffer = BytesIO()
+    hdulist.writeto(buffer)
+    buffer.seek(0)
+    cache.set(key_name, buffer.read(), timeout=None)
+
+
+def get_cached_fits(key_name):
+    cached_value = cache.get(key_name)
+    if cached_value is None:
+        return None
+    buffer = BytesIO(cached_value)
+    buffer.seek(0)
+    return fits.open(buffer)

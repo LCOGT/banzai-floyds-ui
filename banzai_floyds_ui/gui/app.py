@@ -1,5 +1,6 @@
 import dash
 from dash import dcc, html
+import dash_bootstrap_components as dbc
 from django_plotly_dash import DjangoDash
 import logging
 import datetime
@@ -8,32 +9,33 @@ import asyncio
 from banzai_floyds_ui.gui.utils.file_utils import fetch_all, get_related_frame
 from banzai_floyds_ui.gui.plots import make_1d_sci_plot, make_2d_sci_plot, make_arc_2d_plot, make_arc_line_plots
 from banzai_floyds_ui.gui.plots import make_profile_plot
+from banzai_floyds_ui.gui.utils.file_utils import get_filename, cache_fits, get_cached_fits
 from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces
 from dash.exceptions import PreventUpdate
 from banzai_floyds_ui.gui.utils.plot_utils import json_to_polynomial, plot_extracted_data
 from banzai_floyds_ui.gui.utils.plot_utils import EXTRACTION_REGION_LINE_ORDER
 from banzai.utils import import_utils
 from banzai.utils.stage_utils import get_stages_for_individual_frame
-from banzai_floyds.frames import FLOYDSObservationFrame
-import dash_bootstrap_components as dbc
+from banzai_floyds.frames import FLOYDSFrameFactory
 from banzai_floyds import settings
+from banzai_floyds.utils.profile_utils import profile_fits_to_data
 import os
 import banzai.main
+import io
+from banzai.logs import get_logger
 
-logger = logging.getLogger(__name__)
+
+logger = get_logger()
 
 dashboard_name = 'banzai-floyds'
 app = DjangoDash(name=dashboard_name)
 
 # set up the context object for banzai
 
-parser.add_argument('--post-to-archive', dest='post_to_archive', action='store_true', default=False)
-parser.add_argument('--no-file-cache', dest='no_file_cache', action='store_true', default=False,
-                    help='Turn off saving files to disk')
-parser.add_argument('--post-to-opensearch', dest='post_to_opensearch', action='store_true',
-                    default=False)
-
-settings.fpack=True
+settings.fpack = True
+settings.post_to_open_search = bool(os.environ.get('POST_TO_OPENSEARCH', False))
+settings.post_to_archive = bool(os.environ.get('POST_TO_ARCHIVE', False))
+settings.no_file_cache = True
 settings.db_address = os.environ['DB_ADDRESS']
 RUNTIME_CONTEXT = banzai.main.parse_args(settings, parse_system_args=False)
 
@@ -47,6 +49,16 @@ def layout():
             html.Div(
                 id='options-container',
                 children=[
+                    dbc.Modal([
+                            dbc.ModalHeader(dbc.ModalTitle("Header"), className='bg-danger text-white'),
+                            dbc.ModalBody("You must be logged in to save an extraction."),
+                            dbc.ModalFooter(
+                                dbc.Button("Close", id="close", className="ms-auto", n_clicks=0)
+                            ),
+                        ],
+                        id="error-logged-in-modal",
+                        is_open=False,
+                    ),
                     html.Div(
                         children=[
                             dcc.DatePickerRange(
@@ -90,6 +102,7 @@ def layout():
                 id='plot-container',
                 children=[
                     dcc.Store(id='initial-extraction-info'),
+                    dcc.Store(id='file-list-metadata'),
                     dcc.Store(id='extraction-positions'),
                     dcc.Store(id='extraction-traces'),
                     dcc.Store(id='extractions'),
@@ -140,8 +153,8 @@ def layout():
                                              'width': '100%', 'height': '550px;'}),
                         ]
                     ),
-                    dcc.radioItems(['Optimal', 'Unweighted'], 'Optimal', inline=True, id='extraction-type'),
-                    dcc.button('Save Extraction', id='extract-button'),
+                    dcc.RadioItems(['Optimal', 'Unweighted'], 'Optimal', inline=True, id='extraction-type'),
+                    dbc.Button('Save Extraction', id='extract-button'),
                 ]
             )
         ]
@@ -151,7 +164,8 @@ def layout():
 app.layout = layout
 
 
-@app.expanded_callback(dash.dependencies.Output('file-list-dropdown', 'options'),
+@app.expanded_callback([dash.dependencies.Output('file-list-dropdown', 'options'),
+                        dash.dependencies.Output('file-list-metadata', 'data')],
                        [dash.dependencies.Input('date-range-picker', 'start_date'),
                         dash.dependencies.Input('date-range-picker', 'end_date'),
                         dash.dependencies.Input('site-picker', 'value')])
@@ -184,7 +198,7 @@ def callback_dropdown_files(*args, **kwargs):
         data = response.json()['results']
         results += [{'label': row['filename'], 'value': row['id']} for row in data]
     results.sort(key=lambda x: x['label'])
-    return results
+    return results, results
 
 
 # This callback snaps the lines back to the same y-position so they don't wander
@@ -243,7 +257,7 @@ app.clientside_callback(
     }
     """,
     dash.dependencies.Input('extraction-traces', 'data'),
-    prevet_initial_call=True
+    prevent_initial_call=True
 )
 
 
@@ -262,7 +276,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
         for line in EXTRACTION_REGION_LINE_ORDER[1:]:
             center = extraction_positions[str(order)]['center']
             position = extraction_positions[str(order)][line]
-            positions_sigma[line] = abs(position - center)
+            positions_sigma[line] = position - center
             positions_sigma[line] /= initial_extraction_info['refsigma'][str(order)]
         center_delta = extraction_positions[str(order)]['center'] - initial_extraction_info['refcenter'][str(order)]
         x, traces = extraction_region_traces(order_center_polynomial, center_polynomial, width_polynomal,
@@ -272,7 +286,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
             xs.append(x)
             ys.append(trace)
 
-        return {'x': xs, 'y': ys}
+    return {'x': xs, 'y': ys}
 
 
 @app.expanded_callback(
@@ -282,7 +296,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
      dash.dependencies.Output('profile-plot', 'figure'),
      dash.dependencies.Output('extraction-plot', 'figure'),
      dash.dependencies.Output('initial-extraction-info', 'data')],
-    dash.dependencies.Input('file-list-dropdown', 'value'), prevent_intial_call=True)
+    dash.dependencies.Input('file-list-dropdown', 'value'), prevent_initial_call=True)
 def callback_make_plots(*args, **kwargs):
     frame_id = args[0]
     if frame_id is None:
@@ -300,7 +314,7 @@ def callback_make_plots(*args, **kwargs):
     sci_2d_frame, sci_2d_filename = get_related_frame(frame_id, archive_header, 'L1ID2D')
     sci_2d_plot, extraction_data = make_2d_sci_plot(sci_2d_frame, sci_2d_filename)
 
-    kwargs['session_state'][sci_2d_filename] = sci_2d_frame
+    cache_fits('science_2d_frame', sci_2d_frame)
 
     profile_plot, initial_extraction_info = make_profile_plot(sci_2d_frame)
 
@@ -361,21 +375,51 @@ def update_extraction_positions(initial_extraction_info, relayout_data, current_
     return current_extraction_positions
 
 
-def reextract(hdu, filename, centers, extraction_positions, runtime_context, extraction_type='optimal'):
+def reextract(hdu, filename, extraction_positions, initial_extraction_info, runtime_context, extraction_type='optimal'):
     # Convert 2d science hdu to banzai-floyds frame object
-    frame = FLOYDSObservationFrame(hdu, )
+    factory = FLOYDSFrameFactory()
+    buffer = io.BytesIO()
+    hdu.writeto(buffer)
+    buffer.seek(0)
+    file_info = {'filename': filename, 'data_buffer': buffer}
+    frame = factory.open(file_info, runtime_context)
     # reset the weights and the background region
-    _, original_widths = frame.profile_fits
-    frame.profile_fits = centers, original_widths, frame['PROFILEFITS'].data
-    frame.profile = load_profile_data(frame.profile_fits)
-    frame.extraction_window = bar
+    centers, widths = frame.profile_fits
+    for order in [1, 2]:
+        center_delta = extraction_positions[str(order)]['center'] - \
+            initial_extraction_info['positions'][str(order)]['center']
+        centers[order-1].coef[0] += center_delta
+    frame.profile_fits = centers, widths, frame['PROFILEFITS'].data
+    frame.profile = profile_fits_to_data(frame.data.shape, centers, widths,
+                                         frame.orders, frame.wavelengths.data)
+    extraction_windows = []
+    for order in [1, 2]:
+        lower = extraction_positions[str(order)]['extract_lower'] / initial_extraction_info['refsigma'][str(order)]
+        upper = extraction_positions[str(order)]['extract_upper'] / initial_extraction_info['refsigma'][str(order)]
+        extraction_windows.append([lower, upper])
+
+    frame.extraction_windows = extraction_windows
+    # Override the default optimal extraction weights from the profile
     if extraction_type == 'unweighted':
         frame.binned_data['weights'] = 1.0
-    frame.background_window = foo
+
+    background_windows = []
+    for order in [1, 2]:
+        order_background = []
+        for region in ['left', 'right']:
+            inner = extraction_positions[str(order)][f'bkg_{region}_inner']
+            inner /= initial_extraction_info['refsigma'][str(order)]
+            outer = extraction_positions[str(order)][f'bkg_{region}_outer']
+            outer /= initial_extraction_info['refsigma'][str(order)]
+            this_background = [inner, outer]
+            this_background.sort()
+            order_background.append(this_background)
+        background_windows.append(order_background)
+    frame.background_windows = background_windows
     stages_to_do = get_stages_for_individual_frame(runtime_context.ORDERED_STAGES,
                                                    last_stage=runtime_context.LAST_STAGE[frame.obstype.upper()],
                                                    extra_stages=runtime_context.EXTRA_STAGES[frame.obstype.upper()])
-    
+
     # Starting at the extraction weights stage
     start_index = stages_to_do.index('banzai_floyds.extract.Extractor')
     stages_to_do = stages_to_do[start_index:]
@@ -392,15 +436,21 @@ def reextract(hdu, filename, centers, extraction_positions, runtime_context, ext
 
 @app.expanded_callback(dash.dependencies.Output('extractions', 'data'),
                        [dash.dependencies.Input('extraction-positions', 'data'),
-                        dash.dependencies.Input('extraction-type', 'value')], 
-                        prevent_initial_call=True)
-def trigger_reextract(extraction_positions, extraction_type, **kwargs):
+                        dash.dependencies.Input('extraction-type', 'value')],
+                       [dash.dependencies.State('initial-extraction-info', 'data'),
+                        dash.dependencies.State('file-list-dropdown', 'value'),
+                        dash.dependencies.State('file-list-metadata', 'data')],
+                       prevent_initial_call=True)
+def trigger_reextract(extraction_positions, extraction_type, initial_extraction_info,
+                      frame_id, frame_data, **kwargs):
 
-    science_frame = kwargs['session_state'].get('science_2d_frame')
+    science_frame = get_cached_fits('science_2d_frame')
+
     if science_frame is None:
         raise PreventUpdate
 
-    frame = reextract(science_frame, centers, extraction_positions, 
+    filename = get_filename(frame_id, frame_data)
+    frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
                       RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
     return plot_extracted_data(frame.extracted)
 
@@ -426,25 +476,32 @@ app.clientside_callback(
     prevent_initial_call=True)
 
 
-@app.expanded_callback(dash.dependencies.Input('extract-button', 'n_clicks'),
+@app.expanded_callback(dash.dependencies.Output("error-logged-in-modal", "is_open"),
+                       dash.dependencies.Input('extract-button', 'n_clicks'),
                        [dash.dependencies.State('extraction-type', 'value'),
-                        dash.dependencies.State('extraction-positions', 'data')], prevent_initial_call=True)
-def save_extraction(n_clicks, extraction_type, extraction_positions, **kwargs):
+                        dash.dependencies.State('extraction-positions', 'data'),
+                        dash.dependencies.State('initial-extraction-info', 'data')],
+                       prevent_initial_call=True)
+def save_extraction(n_clicks, extraction_type, extraction_positions, initial_extraction_info,
+                    frame_id, frame_data, **kwargs):
     if not n_clicks:
         raise PreventUpdate
-    science_frame = kwargs['session_state'].get('science_2d_frame')
+    science_frame = get_cached_fits('science_2d_frame')
     if science_frame is None:
         raise PreventUpdate
 
     # If not logged in, open a modal saying you can only save if you are.
     username = kwargs['session_state'].get('username')
     if username is None:
-        throw error
+        return True
 
+    filename = get_filename(frame_id, frame_data)
     # Run the reextraction
-    extracted_frame = reextract(science_frame, filename, centers, extraction_positions,
+    extracted_frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
                                 RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
     # Save the reducer into the header
     extracted_frame.meta['REDUCER'] = username
     # Push the results to the archive
     extracted_frame.write(RUNTIME_CONTEXT)
+    # Return false to keep the error modal closed
+    return False

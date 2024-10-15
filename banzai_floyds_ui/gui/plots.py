@@ -85,13 +85,20 @@ def make_2d_sci_plot(frame, filename):
         # We really should just use the extraction_window values in the binned data
         # We currently use N sigma from the profile center to set the background region
         # TODO: use a background_window in the binned data analogous to the extraction_window
-        n_extract_sigma = frame['SCI'].header['EXTRTWIN']
-        bkg_lower_n_sigma = frame['SCI'].header['BKWINDW0']
-        bkg_upper_n_sigma = frame['SCI'].header['BKWINDW1']
+
+        extract_lower_n_sigma = frame['SCI'].header[f'XTRTW{order}0']
+        upper_lower_n_sigma = frame['SCI'].header[f'XTRTW{order}1']
+
+        bkg_left_lower_n_sigma = frame['SCI'].header[f'BKWO{order}00']
+        bkg_left_upper_n_sigma = frame['SCI'].header[f'BKWO{order}01']
+
+        bkg_right_lower_n_sigma = frame['SCI'].header[f'BKWO{order}10']
+        bkg_right_upper_n_sigma = frame['SCI'].header[f'BKWO{order}11']
 
         x, traces = extraction_region_traces(order_polynomial, center_polynomial, width_polynomal,
-                                             wavelengths_polynomial, n_extract_sigma, n_extract_sigma,
-                                             bkg_lower_n_sigma, bkg_lower_n_sigma, bkg_upper_n_sigma, bkg_upper_n_sigma)
+                                             wavelengths_polynomial, extract_lower_n_sigma, upper_lower_n_sigma,
+                                             bkg_left_lower_n_sigma, bkg_right_lower_n_sigma, bkg_left_upper_n_sigma,
+                                             bkg_right_upper_n_sigma)
 
         if order == 2:
             center_name = 'Extraction Center'
@@ -388,24 +395,25 @@ def make_profile_plot(sci_2d_frame):
         width_polynomial = header_to_polynomial(sci_2d_frame['PROFILEFITS'].header, 'WID', order)
         extract_sigma = width_polynomial(order_center[order])
         initial_extraction_info['refsigma'][str(order)] = extract_sigma
-        n_extract_sigma = sci_2d_frame['SCI'].header['EXTRTWIN']
-        bkg_lower_n_sigma = sci_2d_frame['SCI'].header['BKWINDW0']
-        bkg_upper_n_sigma = sci_2d_frame['SCI'].header['BKWINDW1']
+
+        extract_lower_n_sigma = sci_2d_frame['SCI'].header[f'XTRTW{order}0']
+        extract_upper_n_sigma = sci_2d_frame['SCI'].header[f'XTRTW{order}1']
+
+        bkg_left_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}00']
+        bkg_left_upper_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}01']
+
+        bkg_right_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}10']
+        bkg_right_upper_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}11']
 
         colors = [LAVENDER, LAVENDER, LAVENDER, DARK_SALMON, DARK_SALMON, DARK_SALMON, DARK_SALMON]
         dashed = ['solid', 'dash', 'dash', 'dash', 'dash', 'dash', 'dash']
         names = ['Extraction Center', 'Extraction Region', 'Extraction Region', 'Background Region',
                  'Background Region', 'Background Region', 'Background Region']
 
-        xs = [
-            extract_center,
-            extract_center - n_extract_sigma * extract_sigma,
-            extract_center + n_extract_sigma * extract_sigma,
-            extract_center - bkg_lower_n_sigma * extract_sigma,
-            extract_center + bkg_lower_n_sigma * extract_sigma,
-            extract_center - bkg_upper_n_sigma * extract_sigma,
-            extract_center + bkg_upper_n_sigma * extract_sigma
-        ]
+        bkg_right_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}10']
+        xs = [extract_center + n_sigma * extract_sigma for n_sigma in
+              [0, extract_lower_n_sigma, extract_upper_n_sigma, bkg_left_lower_n_sigma, bkg_left_upper_n_sigma,
+               bkg_right_lower_n_sigma, bkg_right_upper_n_sigma]]
         for position, key in zip(xs, EXTRACTION_REGION_LINE_ORDER):
             initial_extraction_info['positions'][str(order)][key] = position
 
@@ -436,7 +444,6 @@ def make_1d_sci_plot(frame_id, archive_header):
 
     frame_1d = download_frame(url=f'{settings.ARCHIVE_URL}{frame_id}/', headers=archive_header)
     frame_data = frame_1d[1].data
-
     # We again make the layout dict manually. Below is equivilent to
     # make_subplots(rows=3, cols=2, vertical_spacing=0.02, horizontal_spacing=0.07, shared_xaxes=True, 
     # subplot_titles=['Blue Order (order=2)', 'Red Order (order=1)', None, None, None, None])
