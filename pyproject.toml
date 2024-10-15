@@ -7,16 +7,16 @@ include = ["banzai_floyds_ui*"]
 
 [tool.setuptools.package-data]
 "banzai_floyds_ui" = ["static/*"]
-"banzai_floyds_ui.gui" = ["templates/*"]
+"banzai_floyds_ui.gui" = ["templates/*", "data/*"]
 
 [project]
 dynamic = ["version"]
 name = "banzai_floyds_ui"
 dependencies = [
   "django",
-  "dash",
+  "dash>=2.17",
   "plotly",
-  "django-plotly-dash",
+  "django-plotly-dash>=2.3.2",
   "astropy",
   "lcogt_logging",
   "gunicorn",
@@ -29,6 +29,11 @@ dependencies = [
   "django_redis",
   "whitenoise",
   "httpx",
-  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@output-dataproduct-frameid",
+  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@reextract",
   "scipy"
+]
+
+[project.optional-dependencies]
+test = [
+    "flask"
 ]
