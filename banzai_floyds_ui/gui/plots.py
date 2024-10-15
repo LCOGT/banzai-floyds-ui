@@ -71,9 +71,9 @@ def make_2d_sci_plot(frame, filename):
                                   frame['SCI'].data.shape)
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
 
-        wavelenth_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
-        wavelengths_polynomial = Legendre(coef=wavelenth_solution.coefficients[order - 1],
-                                          domain=wavelenth_solution.domains[order - 1])
+        wavelength_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
+        wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
+                                          domain=wavelength_solution.domains[order - 1])
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)
         width_polynomal = header_to_polynomial(frame['PROFILEFITS'].header, 'WID', order)
         for polynomial, key in zip([order_polynomial, center_polynomial, width_polynomal, wavelengths_polynomial],
@@ -329,7 +329,7 @@ def make_profile_plot(sci_2d_frame):
 
     figure_data = []
     plot_row = {2: 1, 1: 2}
-    # Define the coordinate refernce plot manually per order
+    # Define the coordinate reference plot manually per order
     reference_axes = {2: 1, 1: 3}
     # Approximate wavelength center to plot the profile
     order_center = {1: 7000, 2: 4500}

@@ -221,7 +221,7 @@ app.clientside_callback(
     }
     """,
     dash.dependencies.Input('extraction-traces', 'data'),
-    prevet_initial_call=True
+    prevent_initial_call=True
 )
 
 
@@ -235,7 +235,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
         order_center_polynomial = json_to_polynomial(initial_extraction_info['order_center'][str(order)])
         wavelengths_polynomial = json_to_polynomial(initial_extraction_info['wavelength'][str(order)])
         center_polynomial = json_to_polynomial(initial_extraction_info['profile_center'][str(order)])
-        width_polynomal = json_to_polynomial(initial_extraction_info['profile_sigma'][str(order)])
+        width_polynomial = json_to_polynomial(initial_extraction_info['profile_sigma'][str(order)])
         positions_sigma = {}
         for line in EXTRACTION_REGION_LINE_ORDER[1:]:
             center = extraction_positions[str(order)]['center']
@@ -243,7 +243,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
             positions_sigma[line] = abs(position - center)
             positions_sigma[line] /= initial_extraction_info['refsigma'][str(order)]
         center_delta = extraction_positions[str(order)]['center'] - initial_extraction_info['refcenter'][str(order)]
-        x, traces = extraction_region_traces(order_center_polynomial, center_polynomial, width_polynomal,
+        x, traces = extraction_region_traces(order_center_polynomial, center_polynomial, width_polynomial,
                                              wavelengths_polynomial, **positions_sigma, center_delta=center_delta)
 
         for trace in traces:
@@ -260,7 +260,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
      dash.dependencies.Output('profile-plot', 'figure'),
      dash.dependencies.Output('extraction-plot', 'figure'),
      dash.dependencies.Output('initial-extraction-info', 'data')],
-    dash.dependencies.Input('file-list-dropdown', 'value'), prevent_intial_call=True)
+    dash.dependencies.Input('file-list-dropdown', 'value'), prevent_initial_call=True)
 def callback_make_plots(*args, **kwargs):
     frame_id = args[0]
     if frame_id is None:
