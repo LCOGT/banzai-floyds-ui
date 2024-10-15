@@ -35,13 +35,13 @@ EXTRACTION_REGION_LINE_ORDER = ['center', 'extract_lower', 'extract_upper', 'bkg
                                 'bkg_left_outer', 'bkg_right_outer']
 
 
-def extraction_region_traces(order_polynomial, center_polynomial, width_polynomal,
+def extraction_region_traces(order_polynomial, center_polynomial, width_polynomial,
                              wavelengths_polynomial, extract_lower, extract_upper,
                              bkg_left_inner, bkg_right_inner, bkg_left_outer, bkg_right_outer,
                              center_delta=0.0):
     x = np.arange(wavelengths_polynomial.domain[0], wavelengths_polynomial.domain[1] + 1)
     wavelengths = wavelengths_polynomial(x)
-    extract_sigma = width_polynomal(wavelengths)
+    extract_sigma = width_polynomial(wavelengths)
     extract_center = center_polynomial(wavelengths)
 
     extract_center += order_polynomial(x)

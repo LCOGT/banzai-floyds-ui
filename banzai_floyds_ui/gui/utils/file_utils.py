@@ -25,9 +25,11 @@ def download_frame(headers, url=f'{settings.ARCHIVE_URL}', params=None, list_end
 
     buffer = io.BytesIO()
     if list_endpoint:
-        buffer.write(requests.get(response.json()['results'][0]['url'], stream=True).content)
+        data_url = response.json()['results'][0]['url']
     else:
-        buffer.write(requests.get(response.json()['url'], stream=True).content)
+        data_url = response.json()['url']
+    data = requests.get(data_url).content
+    buffer.write(data)
     buffer.seek(0)
 
     hdu = fits.open(buffer)
