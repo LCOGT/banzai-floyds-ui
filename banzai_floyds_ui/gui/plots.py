@@ -71,9 +71,9 @@ def make_2d_sci_plot(frame, filename):
                                   frame['SCI'].data.shape)
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
 
-        wavelength_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
-        wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
-                                          domain=wavelength_solution.domains[order - 1])
+        wavelenth_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
+        wavelengths_polynomial = Legendre(coef=wavelenth_solution.coefficients[order - 1],
+                                          domain=wavelenth_solution.domains[order - 1])
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)
         width_polynomal = header_to_polynomial(frame['PROFILEFITS'].header, 'WID', order)
         for polynomial, key in zip([order_polynomial, center_polynomial, width_polynomal, wavelengths_polynomial],
@@ -97,9 +97,9 @@ def make_2d_sci_plot(frame, filename):
 
         x, traces = extraction_region_traces(order_polynomial, center_polynomial, width_polynomal,
                                              wavelengths_polynomial, extract_lower_n_sigma, upper_lower_n_sigma,
-                                             bkg_left_lower_n_sigma, bkg_right_lower_n_sigma, bkg_left_upper_n_sigma,
+                                             bkg_left_upper_n_sigma, bkg_right_lower_n_sigma, bkg_left_lower_n_sigma,
                                              bkg_right_upper_n_sigma)
-
+        print('Got here', f'{extract_lower_n_sigma=}', f'{upper_lower_n_sigma=}', f'{bkg_left_upper_n_sigma=}', f'{bkg_right_lower_n_sigma=}', f'{bkg_left_lower_n_sigma=}', f'{bkg_right_upper_n_sigma=}')
         if order == 2:
             center_name = 'Extraction Center'
             center_legend = True
@@ -330,13 +330,13 @@ def make_profile_plot(sci_2d_frame):
                   'range': [-0.1, 1.5], 'domain': [0.565, 1.0]},
         'yaxis2': {'anchor': 'x2', 'title': {'text': 'y (pixel)'}, 'domain': [0.565, 1.0]},
         'yaxis3': {'anchor': 'x3', 'title': {'text': 'Normalized Flux'},
-                   'range': [-0.1, 1.5],'domain': [0.0, 0.435]},
+                   'range': [-0.1, 1.5], 'domain': [0.0, 0.435]},
         'yaxis4': {'anchor': 'x4', 'title': {'text': 'y (pixel)'}, 'domain': [0.0, 0.435]}
     }
 
     figure_data = []
     plot_row = {2: 1, 1: 2}
-    # Define the coordinate reference plot manually per order
+    # Define the coordinate refernce plot manually per order
     reference_axes = {2: 1, 1: 3}
     # Approximate wavelength center to plot the profile
     order_center = {1: 7000, 2: 4500}
@@ -412,8 +412,8 @@ def make_profile_plot(sci_2d_frame):
 
         bkg_right_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}10']
         xs = [extract_center + n_sigma * extract_sigma for n_sigma in
-              [0, extract_lower_n_sigma, extract_upper_n_sigma, bkg_left_lower_n_sigma, bkg_left_upper_n_sigma,
-               bkg_right_lower_n_sigma, bkg_right_upper_n_sigma]]
+              [0, extract_lower_n_sigma, extract_upper_n_sigma, bkg_left_upper_n_sigma,
+               bkg_right_lower_n_sigma, bkg_left_lower_n_sigma, bkg_right_upper_n_sigma]]
         for position, key in zip(xs, EXTRACTION_REGION_LINE_ORDER):
             initial_extraction_info['positions'][str(order)][key] = position
 

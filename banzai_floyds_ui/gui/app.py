@@ -2,7 +2,6 @@ import dash
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 from django_plotly_dash import DjangoDash
-import logging
 import datetime
 import requests
 import asyncio
@@ -12,7 +11,7 @@ from banzai_floyds_ui.gui.plots import make_profile_plot
 from banzai_floyds_ui.gui.utils.file_utils import get_filename, cache_fits, get_cached_fits
 from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces
 from dash.exceptions import PreventUpdate
-from banzai_floyds_ui.gui.utils.plot_utils import json_to_polynomial, plot_extracted_data
+from banzai_floyds_ui.gui.utils.plot_utils import json_to_polynomial
 from banzai_floyds_ui.gui.utils.plot_utils import EXTRACTION_REGION_LINE_ORDER
 from banzai.utils import import_utils
 from banzai.utils.stage_utils import get_stages_for_individual_frame
@@ -50,13 +49,33 @@ def layout():
                 id='options-container',
                 children=[
                     dbc.Modal([
-                            dbc.ModalHeader(dbc.ModalTitle("Header"), className='bg-danger text-white'),
+                            dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
                             dbc.ModalBody("You must be logged in to save an extraction."),
                             dbc.ModalFooter(
-                                dbc.Button("Close", id="close", className="ms-auto", n_clicks=0)
+                                dbc.Button("Close", id="logged-in-close", className="ms-auto", n_clicks=0)
                             ),
                         ],
                         id="error-logged-in-modal",
+                        is_open=False,
+                    ),
+                    dbc.Modal([
+                            dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
+                            dbc.ModalBody("Error extracting spectrum. Plots may not reflect extraction paramters."),
+                            dbc.ModalFooter(
+                                dbc.Button("Close", id="extract-fail-close", className="ms-auto", n_clicks=0)
+                            ),
+                        ],
+                        id="error-extract-failed-modal",
+                        is_open=False,
+                    ),
+                    dbc.Modal([
+                            dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
+                            dbc.ModalBody("Error extracting spectrum. Spectrum will not be saved."),
+                            dbc.ModalFooter(
+                                dbc.Button("Close", id="save-fail-close", className="ms-auto", n_clicks=0)
+                            ),
+                        ],
+                        id="error-extract-failed-on-save-modal",
                         is_open=False,
                     ),
                     html.Div(
@@ -394,8 +413,10 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
                                          frame.orders, frame.wavelengths.data)
     extraction_windows = []
     for order in [1, 2]:
-        lower = extraction_positions[str(order)]['extract_lower'] / initial_extraction_info['refsigma'][str(order)]
-        upper = extraction_positions[str(order)]['extract_upper'] / initial_extraction_info['refsigma'][str(order)]
+        lower = extraction_positions[str(order)]['extract_lower'] - extraction_positions[str(order)]['center']
+        lower /= initial_extraction_info['refsigma'][str(order)]
+        upper = extraction_positions[str(order)]['extract_upper'] - extraction_positions[str(order)]['center']
+        upper /= initial_extraction_info['refsigma'][str(order)]
         extraction_windows.append([lower, upper])
 
     frame.extraction_windows = extraction_windows
@@ -407,9 +428,9 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
     for order in [1, 2]:
         order_background = []
         for region in ['left', 'right']:
-            inner = extraction_positions[str(order)][f'bkg_{region}_inner']
+            inner = extraction_positions[str(order)][f'bkg_{region}_inner'] - extraction_positions[str(order)]['center']
             inner /= initial_extraction_info['refsigma'][str(order)]
-            outer = extraction_positions[str(order)][f'bkg_{region}_outer']
+            outer = extraction_positions[str(order)][f'bkg_{region}_outer'] - extraction_positions[str(order)]['center']
             outer /= initial_extraction_info['refsigma'][str(order)]
             this_background = [inner, outer]
             this_background.sort()
@@ -431,10 +452,12 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
         if not frames:
             logger.error('Reduction stopped', extra_tags={'filename': filename})
             return
+    logger.info('Reduction complete', extra_tags={'filename': filename})
     return frame
 
 
-@app.expanded_callback(dash.dependencies.Output('extractions', 'data'),
+@app.expanded_callback([dash.dependencies.Output('extractions', 'data'),
+                        dash.dependencies.Output('error-extract-failed-modal', 'is_open')],
                        [dash.dependencies.Input('extraction-positions', 'data'),
                         dash.dependencies.Input('extraction-type', 'value')],
                        [dash.dependencies.State('initial-extraction-info', 'data'),
@@ -452,7 +475,18 @@ def trigger_reextract(extraction_positions, extraction_type, initial_extraction_
     filename = get_filename(frame_id, frame_data)
     frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
                       RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
-    return plot_extracted_data(frame.extracted)
+
+    if frame is None:
+        return dash.no_update, True
+
+    x = []
+    y = []
+    for order in [2, 1]:
+        where_order = frame.extracted['order'] == order
+        for flux in ['flux', 'fluxraw', 'background']:
+            x.append(frame.extracted['wavelength'][where_order])
+            y.append(frame.extracted[flux][where_order])
+    return {'x': x, 'y': y}, False
 
 
 app.clientside_callback(
@@ -461,11 +495,10 @@ app.clientside_callback(
         if (typeof extraction_data === "undefined") {
             return window.dash_clientside.no_update;
         }
-
-        var dccGraph = document.getElementById('sci-1d-plot');
+        var dccGraph = document.getElementById('extraction-plot');
         var jsFigure = dccGraph.querySelector('.js-plotly-plot');
         var trace_ids = [];
-        for (let i = 1; i <= extraction_data.x.length; i++) {
+        for (let i = 0; i < extraction_data.x.length; i++) {
             trace_ids.push(i);
         }
         Plotly.restyle(jsFigure, extraction_data, trace_ids);
@@ -476,7 +509,8 @@ app.clientside_callback(
     prevent_initial_call=True)
 
 
-@app.expanded_callback(dash.dependencies.Output("error-logged-in-modal", "is_open"),
+@app.expanded_callback([dash.dependencies.Output("error-logged-in-modal", "is_open"),
+                        dash.dependencies.Output('error-extract-failed-on-save-modal', 'is_open')],
                        dash.dependencies.Input('extract-button', 'n_clicks'),
                        [dash.dependencies.State('extraction-type', 'value'),
                         dash.dependencies.State('extraction-positions', 'data'),
@@ -493,15 +527,17 @@ def save_extraction(n_clicks, extraction_type, extraction_positions, initial_ext
     # If not logged in, open a modal saying you can only save if you are.
     username = kwargs['session_state'].get('username')
     if username is None:
-        return True
+        return True, dash.no_update
 
     filename = get_filename(frame_id, frame_data)
     # Run the reextraction
     extracted_frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
                                 RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
+    if extracted_frame is None:
+        return dash.no_update, True
     # Save the reducer into the header
     extracted_frame.meta['REDUCER'] = username
     # Push the results to the archive
     extracted_frame.write(RUNTIME_CONTEXT)
     # Return false to keep the error modal closed
-    return False
+    return dash.no_update, dash.no_update
