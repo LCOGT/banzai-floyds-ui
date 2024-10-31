@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 from banzai_floyds_ui.gui.forms import LoginForm
+from django.views.decorators.csrf import csrf_protect
 from django.conf import settings
 import requests
 
@@ -16,6 +17,7 @@ def banzai_floyds_view(request, template_name="floyds.html", **kwargs):
     return render(request, template_name=template_name, context=context)
 
 
+@csrf_protect
 @require_http_methods(["POST"])
 def login_view(request):
     form = LoginForm(request.POST)
@@ -35,6 +37,7 @@ def login_view(request):
             return render(request, 'floyds.html')
 
 
+@csrf_protect
 @require_http_methods(["POST"])
 def logout_view(request):
     if 'auth_token' in request.session:

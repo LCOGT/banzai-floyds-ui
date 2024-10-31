@@ -8,7 +8,7 @@ import asyncio
 from banzai_floyds_ui.gui.utils.file_utils import fetch_all, get_related_frame
 from banzai_floyds_ui.gui.plots import make_1d_sci_plot, make_2d_sci_plot, make_arc_2d_plot, make_arc_line_plots
 from banzai_floyds_ui.gui.plots import make_profile_plot
-from banzai_floyds_ui.gui.utils.file_utils import get_filename, cache_fits, get_cached_fits
+from banzai_floyds_ui.gui.utils import file_utils
 from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces
 from dash.exceptions import PreventUpdate
 from banzai_floyds_ui.gui.utils.plot_utils import json_to_polynomial
@@ -22,12 +22,13 @@ import os
 import banzai.main
 import io
 from banzai.logs import get_logger
+from django.core.cache import cache
 
 
 logger = get_logger()
 
 dashboard_name = 'banzai-floyds'
-app = DjangoDash(name=dashboard_name)
+app = DjangoDash(name=dashboard_name, csrf_token_name='csrftoken')
 
 # set up the context object for banzai
 
@@ -51,9 +52,6 @@ def layout():
                     dbc.Modal([
                             dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
                             dbc.ModalBody("You must be logged in to save an extraction."),
-                            dbc.ModalFooter(
-                                dbc.Button("Close", id="logged-in-close", className="ms-auto", n_clicks=0)
-                            ),
                         ],
                         id="error-logged-in-modal",
                         is_open=False,
@@ -61,19 +59,16 @@ def layout():
                     dbc.Modal([
                             dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
                             dbc.ModalBody("Error extracting spectrum. Plots may not reflect extraction paramters."),
-                            dbc.ModalFooter(
-                                dbc.Button("Close", id="extract-fail-close", className="ms-auto", n_clicks=0)
-                            ),
                         ],
                         id="error-extract-failed-modal",
                         is_open=False,
                     ),
                     dbc.Modal([
                             dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
-                            dbc.ModalBody("Error extracting spectrum. Spectrum will not be saved."),
-                            dbc.ModalFooter(
-                                dbc.Button("Close", id="save-fail-close", className="ms-auto", n_clicks=0)
-                            ),
+                            dbc.ModalBody("""
+                                          Error saving spectrum.
+                                          Note you need to have clicked the re-extract button at least before saving.
+                                          """),
                         ],
                         id="error-extract-failed-on-save-modal",
                         is_open=False,
@@ -123,8 +118,6 @@ def layout():
                     dcc.Store(id='initial-extraction-info'),
                     dcc.Store(id='file-list-metadata'),
                     dcc.Store(id='extraction-positions'),
-                    dcc.Store(id='extraction-traces'),
-                    dcc.Store(id='extractions'),
                     dcc.Loading(
                         id='loading-arc-2d-plot-container',
                         type='default',
@@ -162,17 +155,21 @@ def layout():
                                       config={'edits': {'shapePosition': True}}),
                         ]
                     ),
-                    html.Div('Extraction Type:'),
+                    html.Div(['Extraction Type:',
+                             dcc.RadioItems(['Optimal', 'Unweighted'], 'Optimal', inline=True, id='extraction-type',
+                                            style={"margin-right": "10px"})],
+                             dbc.Button('Re-Extract', id='extract-button')),
                     dcc.Loading(
                         id='loading-extraction-plot-container',
                         type='default',
                         children=[
+                            dcc.Store(id='extraction-traces'),
+                            dcc.Store(id='extractions'),
                             dcc.Graph(id='extraction-plot',
                                       style={'display': 'inline-block',
                                              'width': '100%', 'height': '550px;'}),
                         ]
                     ),
-                    dcc.RadioItems(['Optimal', 'Unweighted'], 'Optimal', inline=True, id='extraction-type'),
                     dbc.Button('Save Extraction', id='extract-button'),
                 ]
             )
@@ -215,7 +212,7 @@ def callback_dropdown_files(*args, **kwargs):
             logger.error(f"Failed to fetch data from archive: {e}. {response.content}")
             return
         data = response.json()['results']
-        results += [{'label': row['filename'], 'value': row['id']} for row in data]
+        results += [{'label': f'{row["filename"]} {row["OBJECT"]} {row["PROPID"]}', 'value': row['id']} for row in data]
     results.sort(key=lambda x: x['label'])
     return results, results
 
@@ -333,7 +330,8 @@ def callback_make_plots(*args, **kwargs):
     sci_2d_frame, sci_2d_filename = get_related_frame(frame_id, archive_header, 'L1ID2D')
     sci_2d_plot, extraction_data = make_2d_sci_plot(sci_2d_frame, sci_2d_filename)
 
-    cache_fits('science_2d_frame', sci_2d_frame)
+    file_utils.cache_fits('science_2d_frame', sci_2d_frame)
+    cache.set('filename', sci_2d_frame['SCI'].header['ORIGNAME'] + '.fits')
 
     profile_plot, initial_extraction_info = make_profile_plot(sci_2d_frame)
 
@@ -467,18 +465,19 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
 def trigger_reextract(extraction_positions, extraction_type, initial_extraction_info,
                       frame_id, frame_data, **kwargs):
 
-    science_frame = get_cached_fits('science_2d_frame')
+    science_frame = file_utils.get_cached_fits('science_2d_frame')
 
     if science_frame is None:
         raise PreventUpdate
 
-    filename = get_filename(frame_id, frame_data)
+    filename = cache.get('filename')
     frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
                       RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
 
     if frame is None:
         return dash.no_update, True
 
+    file_utils.cache_frame('reextracted_frame', frame)
     x = []
     y = []
     for order in [2, 1]:
@@ -512,16 +511,9 @@ app.clientside_callback(
 @app.expanded_callback([dash.dependencies.Output("error-logged-in-modal", "is_open"),
                         dash.dependencies.Output('error-extract-failed-on-save-modal', 'is_open')],
                        dash.dependencies.Input('extract-button', 'n_clicks'),
-                       [dash.dependencies.State('extraction-type', 'value'),
-                        dash.dependencies.State('extraction-positions', 'data'),
-                        dash.dependencies.State('initial-extraction-info', 'data')],
                        prevent_initial_call=True)
-def save_extraction(n_clicks, extraction_type, extraction_positions, initial_extraction_info,
-                    frame_id, frame_data, **kwargs):
+def save_extraction(n_clicks, **kwargs):
     if not n_clicks:
-        raise PreventUpdate
-    science_frame = get_cached_fits('science_2d_frame')
-    if science_frame is None:
         raise PreventUpdate
 
     # If not logged in, open a modal saying you can only save if you are.
@@ -529,12 +521,11 @@ def save_extraction(n_clicks, extraction_type, extraction_positions, initial_ext
     if username is None:
         return True, dash.no_update
 
-    filename = get_filename(frame_id, frame_data)
     # Run the reextraction
-    extracted_frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
-                                RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
+    extracted_frame = file_utils.get_cached_frame('reextracted_frame')
     if extracted_frame is None:
         return dash.no_update, True
+
     # Save the reducer into the header
     extracted_frame.meta['REDUCER'] = username
     # Push the results to the archive
