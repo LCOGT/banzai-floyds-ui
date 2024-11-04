@@ -1,7 +1,5 @@
 import importlib.resources
 from astropy.table import Table
-from django.conf import settings
-from banzai_floyds_ui.gui.utils.file_utils import download_frame
 from banzai_floyds_ui.gui.utils.header_utils import header_to_polynomial
 
 import numpy as np
@@ -440,12 +438,10 @@ def make_profile_plot(sci_2d_frame):
     return {'data': figure_data, 'layout': layout}, initial_extraction_info
 
 
-def make_1d_sci_plot(frame_id, archive_header):
-
-    frame_1d = download_frame(url=f'{settings.ARCHIVE_URL}{frame_id}/', headers=archive_header)
-    frame_data = frame_1d[1].data
+def make_1d_sci_plot(frame_1d):
+    frame_data = frame_1d['EXTRACTED'].data
     # We again make the layout dict manually. Below is equivilent to
-    # make_subplots(rows=3, cols=2, vertical_spacing=0.02, horizontal_spacing=0.07, shared_xaxes=True, 
+    # make_subplots(rows=3, cols=2, vertical_spacing=0.02, horizontal_spacing=0.07, shared_xaxes=True,
     # subplot_titles=['Blue Order (order=2)', 'Red Order (order=1)', None, None, None, None])
     title_dict = {
         'text': f"1-D Extractions: {frame_1d[0].header['ORIGNAME'].replace('-e00', '-e91-1d')}",
@@ -494,4 +490,22 @@ def make_1d_sci_plot(frame_id, archive_header):
 
     figure_data = plot_extracted_data(frame_data)
 
+    return {'data': figure_data, 'layout': layout}
+
+
+def make_combined_extraction_plot(frame_1d):
+    extraction_data = frame_1d['SPECTRUM'].data
+    extraction_data.sort('wavelength')
+    figure_data = dict(type='scatter', x=extraction_data['wavelength'], y=extraction_data['flux'],
+                       line=dict(color='#023858'), mode='lines')
+    layout = {
+        'template': PLOTLY_TEMPLATE,
+        'title': f'Combined Extraction: {frame_1d[0].header["ORIGNAME"].replace("-e00", "-e91-1d")}',
+        'showlegend': False,
+        'yaxis': {
+            'title': {'text': 'Flux (erg s\u207B\u00B9 cm\u207B\u00B2 \u212B\u207B\u00B9)'},
+            'exponentformat': 'power'
+        },
+        'xaxis': {'text': 'Wavelength (\u212B)'}
+    }
     return {'data': figure_data, 'layout': layout}

@@ -5,9 +5,10 @@ from django_plotly_dash import DjangoDash
 import datetime
 import requests
 import asyncio
+from banzai_floyds_ui.gui.utils.file_utils import download_frame
 from banzai_floyds_ui.gui.utils.file_utils import fetch_all, get_related_frame
 from banzai_floyds_ui.gui.plots import make_1d_sci_plot, make_2d_sci_plot, make_arc_2d_plot, make_arc_line_plots
-from banzai_floyds_ui.gui.plots import make_profile_plot
+from banzai_floyds_ui.gui.plots import make_profile_plot, make_combined_extraction_plot
 from banzai_floyds_ui.gui.utils import file_utils
 from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces
 from dash.exceptions import PreventUpdate
@@ -165,9 +166,13 @@ def layout():
                         children=[
                             dcc.Store(id='extraction-traces'),
                             dcc.Store(id='extractions'),
+                            dcc.Store(id='combined_extraction'),
                             dcc.Graph(id='extraction-plot',
                                       style={'display': 'inline-block',
                                              'width': '100%', 'height': '550px;'}),
+                            dcc.Graph(id='combined-extraction-plot',
+                                      style={'display': 'inline-block',
+                                             'width': '100%', 'height': '350px;'})
                         ]
                     ),
                     dbc.Button('Save Extraction', id='extract-button'),
@@ -311,6 +316,7 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
      dash.dependencies.Output('sci-2d-plot', 'figure'),
      dash.dependencies.Output('profile-plot', 'figure'),
      dash.dependencies.Output('extraction-plot', 'figure'),
+     dash.dependencies.Output('combined-extraction-plot', 'figure'),
      dash.dependencies.Output('initial-extraction-info', 'data')],
     dash.dependencies.Input('file-list-dropdown', 'value'), prevent_initial_call=True)
 def callback_make_plots(*args, **kwargs):
@@ -338,8 +344,10 @@ def callback_make_plots(*args, **kwargs):
     for key in extraction_data:
         initial_extraction_info[key] = extraction_data[key]
 
-    sci_1d_plot = make_1d_sci_plot(frame_id, archive_header)
-    return arc_image_plot, arc_line_plot, sci_2d_plot, profile_plot, sci_1d_plot, initial_extraction_info
+    frame_1d = download_frame(url=f'{settings.ARCHIVE_URL}{frame_id}/', headers=archive_header)
+    sci_1d_plot = make_1d_sci_plot(frame_1d)
+    combined_sci_plot = make_combined_extraction_plot(frame_1d)
+    return arc_image_plot, arc_line_plot, sci_2d_plot, profile_plot, sci_1d_plot, combined_sci_plot, initial_extraction_info
 
 
 @app.expanded_callback(dash.dependencies.Output('extraction-positions', 'data'),
@@ -455,15 +463,13 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
 
 
 @app.expanded_callback([dash.dependencies.Output('extractions', 'data'),
+                        dash.dependencies.Output('combined-extraction', 'data'),
                         dash.dependencies.Output('error-extract-failed-modal', 'is_open')],
                        [dash.dependencies.Input('extraction-positions', 'data'),
                         dash.dependencies.Input('extraction-type', 'value')],
-                       [dash.dependencies.State('initial-extraction-info', 'data'),
-                        dash.dependencies.State('file-list-dropdown', 'value'),
-                        dash.dependencies.State('file-list-metadata', 'data')],
+                       dash.dependencies.State('initial-extraction-info', 'data'),
                        prevent_initial_call=True)
-def trigger_reextract(extraction_positions, extraction_type, initial_extraction_info,
-                      frame_id, frame_data, **kwargs):
+def trigger_reextract(extraction_positions, extraction_type, initial_extraction_info):
 
     science_frame = file_utils.get_cached_fits('science_2d_frame')
 
@@ -475,7 +481,7 @@ def trigger_reextract(extraction_positions, extraction_type, initial_extraction_
                       RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
 
     if frame is None:
-        return dash.no_update, True
+        return dash.no_update, dash.no_update, True
 
     file_utils.cache_frame('reextracted_frame', frame)
     x = []
@@ -485,7 +491,7 @@ def trigger_reextract(extraction_positions, extraction_type, initial_extraction_
         for flux in ['flux', 'fluxraw', 'background']:
             x.append(frame.extracted['wavelength'][where_order])
             y.append(frame.extracted[flux][where_order])
-    return {'x': x, 'y': y}, False
+    return {'x': x, 'y': y}, {'x': frame.spectrum['wavelength'], 'y': frame.spectrum['flux']}, False
 
 
 app.clientside_callback(
@@ -505,6 +511,23 @@ app.clientside_callback(
     }
     """,
     dash.dependencies.Input('extractions', 'data'),
+    prevent_initial_call=True)
+
+
+app.clientside_callback(
+    """
+    function(combined_extraction_data) {
+        if (typeof extraction_data === "undefined") {
+            return window.dash_clientside.no_update;
+        }
+        var dccGraph = document.getElementById('combined-extraction-plot');
+        var jsFigure = dccGraph.querySelector('.js-plotly-plot');
+
+        Plotly.restyle(jsFigure, combined_extraction_data, 0);
+        return window.dash_clientside.no_update;
+    }
+    """,
+    dash.dependencies.Input('combined-extraction', 'data'),
     prevent_initial_call=True)
 
 

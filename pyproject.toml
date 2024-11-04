@@ -30,7 +30,7 @@ dependencies = [
   "django_redis",
   "whitenoise",
   "httpx",
-  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@reextract",
+  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@stitch-orders",
   "scipy"
 ]
 
