@@ -11,24 +11,11 @@ from banzai_floyds.arc_lines import used_lines as arc_lines
 from banzai_floyds.utils.wavelength_utils import WavelengthSolution
 from scipy.interpolate import LinearNDInterpolator
 from banzai_floyds_ui.gui.utils.plot_utils import unfilled_histogram, EXTRACTION_REGION_LINE_ORDER
-from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces
+from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces, plot_extracted_data
+from banzai_floyds_ui.gui.utils.plot_utils import DARK_BLUE, COLORMAP, DARK_SALMON, LAVENDER
 import importlib
 import json
 
-
-COLORMAP = [
-    [0, '#fff7fb'],
-    [0.125, '#ece7f2'],
-    [0.25, '#d0d1e6'],
-    [0.375, '#a6bddb'],
-    [0.5, '#74a9cf'],
-    [0.625, '#3690c0'],
-    [0.75, '#0570b0'],
-    [0.875, '#045a8d'],
-    [1, '#023858']
-]
-DARK_SALMON = '#8F0B0B'
-LAVENDER = '#BB69F5'
 
 template_path = importlib.resources.files('banzai_floyds_ui.gui').joinpath('data/plotly_template.json')
 PLOTLY_TEMPLATE = json.loads(template_path.read_text())
@@ -85,14 +72,20 @@ def make_2d_sci_plot(frame, filename):
         # We really should just use the extraction_window values in the binned data
         # We currently use N sigma from the profile center to set the background region
         # TODO: use a background_window in the binned data analogous to the extraction_window
-        n_extract_sigma = frame['SCI'].header['EXTRTWIN']
-        bkg_lower_n_sigma = frame['SCI'].header['BKWINDW0']
-        bkg_upper_n_sigma = frame['SCI'].header['BKWINDW1']
+
+        extract_lower_n_sigma = frame['SCI'].header[f'XTRTW{order}0']
+        upper_lower_n_sigma = frame['SCI'].header[f'XTRTW{order}1']
+
+        bkg_left_lower_n_sigma = frame['SCI'].header[f'BKWO{order}00']
+        bkg_left_upper_n_sigma = frame['SCI'].header[f'BKWO{order}01']
+
+        bkg_right_lower_n_sigma = frame['SCI'].header[f'BKWO{order}10']
+        bkg_right_upper_n_sigma = frame['SCI'].header[f'BKWO{order}11']
 
         x, traces = extraction_region_traces(order_polynomial, center_polynomial, width_polynomal,
-                                             wavelengths_polynomial, n_extract_sigma, n_extract_sigma,
-                                             bkg_lower_n_sigma, bkg_lower_n_sigma, bkg_upper_n_sigma, bkg_upper_n_sigma)
-
+                                             wavelengths_polynomial, extract_lower_n_sigma, upper_lower_n_sigma,
+                                             bkg_left_upper_n_sigma, bkg_right_lower_n_sigma, bkg_left_lower_n_sigma,
+                                             bkg_right_upper_n_sigma)
         if order == 2:
             center_name = 'Extraction Center'
             center_legend = True
@@ -263,7 +256,7 @@ def make_arc_line_plots(arc_frame_hdu):
         figure_data.append(
             dict(
                 type='scatter', x=residuals_wavelengths.tolist(), y=residuals.tolist(),
-                mode='markers', marker=dict(color='#023858'),
+                mode='markers', marker=dict(color=DARK_BLUE),
                 hovertext=residual_hover_text,
                 hovertemplate='%{y}\u212B: %{hovertext}<extra></extra>',
                 xaxis=f'x{plot_column[order] + 2}', yaxis=f'y{plot_column[order] + 2}'
@@ -323,7 +316,7 @@ def make_profile_plot(sci_2d_frame):
                   'range': [-0.1, 1.5], 'domain': [0.565, 1.0]},
         'yaxis2': {'anchor': 'x2', 'title': {'text': 'y (pixel)'}, 'domain': [0.565, 1.0]},
         'yaxis3': {'anchor': 'x3', 'title': {'text': 'Normalized Flux'},
-                   'range': [-0.1, 1.5],'domain': [0.0, 0.435]},
+                   'range': [-0.1, 1.5], 'domain': [0.0, 0.435]},
         'yaxis4': {'anchor': 'x4', 'title': {'text': 'y (pixel)'}, 'domain': [0.0, 0.435]}
     }
 
@@ -352,7 +345,7 @@ def make_profile_plot(sci_2d_frame):
             model_name = None
             data_name = None
         figure_data.append(
-            unfilled_histogram(data['y_order'], data['data'], '#023858', name=data_name, legend='legend2',
+            unfilled_histogram(data['y_order'], data['data'], DARK_BLUE, name=data_name, legend='legend2',
                                axis=2 * plot_row[order] - 1),
         )
 
@@ -366,7 +359,7 @@ def make_profile_plot(sci_2d_frame):
             dict(
                 type='scatter', x=traced_points['wavelength'],
                 y=traced_points['center'],
-                mode='markers', marker={'color': '#023858'},
+                mode='markers', marker={'color': DARK_BLUE},
                 hoverinfo='skip', showlegend=False,
                 xaxis=f'x{plot_row[order] * 2}', yaxis=f'y{plot_row[order] * 2}'
             )
@@ -388,24 +381,25 @@ def make_profile_plot(sci_2d_frame):
         width_polynomial = header_to_polynomial(sci_2d_frame['PROFILEFITS'].header, 'WID', order)
         extract_sigma = width_polynomial(order_center[order])
         initial_extraction_info['refsigma'][str(order)] = extract_sigma
-        n_extract_sigma = sci_2d_frame['SCI'].header['EXTRTWIN']
-        bkg_lower_n_sigma = sci_2d_frame['SCI'].header['BKWINDW0']
-        bkg_upper_n_sigma = sci_2d_frame['SCI'].header['BKWINDW1']
+
+        extract_lower_n_sigma = sci_2d_frame['SCI'].header[f'XTRTW{order}0']
+        extract_upper_n_sigma = sci_2d_frame['SCI'].header[f'XTRTW{order}1']
+
+        bkg_left_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}00']
+        bkg_left_upper_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}01']
+
+        bkg_right_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}10']
+        bkg_right_upper_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}11']
 
         colors = [LAVENDER, LAVENDER, LAVENDER, DARK_SALMON, DARK_SALMON, DARK_SALMON, DARK_SALMON]
         dashed = ['solid', 'dash', 'dash', 'dash', 'dash', 'dash', 'dash']
         names = ['Extraction Center', 'Extraction Region', 'Extraction Region', 'Background Region',
                  'Background Region', 'Background Region', 'Background Region']
 
-        xs = [
-            extract_center,
-            extract_center - n_extract_sigma * extract_sigma,
-            extract_center + n_extract_sigma * extract_sigma,
-            extract_center - bkg_lower_n_sigma * extract_sigma,
-            extract_center + bkg_lower_n_sigma * extract_sigma,
-            extract_center - bkg_upper_n_sigma * extract_sigma,
-            extract_center + bkg_upper_n_sigma * extract_sigma
-        ]
+        bkg_right_lower_n_sigma = sci_2d_frame['SCI'].header[f'BKWO{order}10']
+        xs = [extract_center + n_sigma * extract_sigma for n_sigma in
+              [0, extract_lower_n_sigma, extract_upper_n_sigma, bkg_left_upper_n_sigma,
+               bkg_right_lower_n_sigma, bkg_left_lower_n_sigma, bkg_right_upper_n_sigma]]
         for position, key in zip(xs, EXTRACTION_REGION_LINE_ORDER):
             initial_extraction_info['positions'][str(order)][key] = position
 
@@ -436,7 +430,6 @@ def make_1d_sci_plot(frame_id, archive_header):
 
     frame_1d = download_frame(url=f'{settings.ARCHIVE_URL}{frame_id}/', headers=archive_header)
     frame_data = frame_1d[1].data
-
     # We again make the layout dict manually. Below is equivilent to
     # make_subplots(rows=3, cols=2, vertical_spacing=0.02, horizontal_spacing=0.07, shared_xaxes=True, 
     # subplot_titles=['Blue Order (order=2)', 'Red Order (order=1)', None, None, None, None])
@@ -484,24 +477,7 @@ def make_1d_sci_plot(frame_id, archive_header):
         },
         'yaxis6': {'anchor': 'x6', 'domain': [0.0, 0.32], 'exponentformat': 'power'}
     }
-    figure_data = []
-    plot_column = {2: 1, 1: 2}
-    for order in [2, 1]:
-        where_order = frame_data['order'] == order
-        top_row_axis = '' if plot_column[order] == 1 else plot_column[order]
-        figure_data.append(
-            dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['flux'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{top_row_axis}', yaxis=f'y{top_row_axis}')
-        )
-        mid_row_axis = plot_column[order] + 2
-        figure_data.append(
-            dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['fluxraw'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{mid_row_axis}', yaxis=f'y{mid_row_axis}')
-        )
-        bottom_row_axis = plot_column[order] + 4
-        figure_data.append(
-            dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['background'][where_order],
-                 line_color='#023858', mode='lines', xaxis=f'x{bottom_row_axis}', yaxis=f'y{bottom_row_axis}')
-        )
+
+    figure_data = plot_extracted_data(frame_data)
 
     return {'data': figure_data, 'layout': layout}
