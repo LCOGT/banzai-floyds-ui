@@ -1,6 +1,22 @@
 import numpy as np
 
 
+DARK_BLUE = '#023858'
+COLORMAP = [
+    [0, '#fff7fb'],
+    [0.125, '#ece7f2'],
+    [0.25, '#d0d1e6'],
+    [0.375, '#a6bddb'],
+    [0.5, '#74a9cf'],
+    [0.625, '#3690c0'],
+    [0.75, '#0570b0'],
+    [0.875, '#045a8d'],
+    [1, DARK_BLUE]
+]
+DARK_SALMON = '#8F0B0B'
+LAVENDER = '#BB69F5'
+
+
 def xy_to_svg_path(x, y):
     # We don't want a Z at the end because we're not closing the path
     return 'M ' + ' L '.join(f'{i},{j}' for i, j in zip(x, y))
@@ -65,16 +81,16 @@ def plot_extracted_data(frame_data):
         top_row_axis = '' if plot_column[order] == 1 else plot_column[order]
         figure_data.append(
             dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['flux'][where_order],
-                 line=dict(color='#023858'), mode='lines', xaxis=f'x{top_row_axis}', yaxis=f'y{top_row_axis}')
+                 line=dict(color=DARK_BLUE), mode='lines', xaxis=f'x{top_row_axis}', yaxis=f'y{top_row_axis}')
         )
         mid_row_axis = plot_column[order] + 2
         figure_data.append(
             dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['fluxraw'][where_order],
-                 line=dict(color='#023858'), mode='lines', xaxis=f'x{mid_row_axis}', yaxis=f'y{mid_row_axis}')
+                 line=dict(color=DARK_BLUE), mode='lines', xaxis=f'x{mid_row_axis}', yaxis=f'y{mid_row_axis}')
         )
         bottom_row_axis = plot_column[order] + 4
         figure_data.append(
             dict(type='scatter', x=frame_data['wavelength'][where_order], y=frame_data['background'][where_order],
-                 line=dict(color='#023858'), mode='lines', xaxis=f'x{bottom_row_axis}', yaxis=f'y{bottom_row_axis}')
+                 line=dict(color=DARK_BLUE), mode='lines', xaxis=f'x{bottom_row_axis}', yaxis=f'y{bottom_row_axis}')
         )
     return figure_data
