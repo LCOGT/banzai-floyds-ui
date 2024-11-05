@@ -12,23 +12,10 @@ from banzai_floyds.utils.wavelength_utils import WavelengthSolution
 from scipy.interpolate import LinearNDInterpolator
 from banzai_floyds_ui.gui.utils.plot_utils import unfilled_histogram, EXTRACTION_REGION_LINE_ORDER
 from banzai_floyds_ui.gui.utils.plot_utils import extraction_region_traces, plot_extracted_data
+from banzai_floyds_ui.gui.utils.plot_utils import DARK_BLUE, COLORMAP, DARK_SALMON, LAVENDER
 import importlib
 import json
 
-
-COLORMAP = [
-    [0, '#fff7fb'],
-    [0.125, '#ece7f2'],
-    [0.25, '#d0d1e6'],
-    [0.375, '#a6bddb'],
-    [0.5, '#74a9cf'],
-    [0.625, '#3690c0'],
-    [0.75, '#0570b0'],
-    [0.875, '#045a8d'],
-    [1, '#023858']
-]
-DARK_SALMON = '#8F0B0B'
-LAVENDER = '#BB69F5'
 
 template_path = importlib.resources.files('banzai_floyds_ui.gui').joinpath('data/plotly_template.json')
 PLOTLY_TEMPLATE = json.loads(template_path.read_text())
@@ -71,9 +58,9 @@ def make_2d_sci_plot(frame, filename):
                                   frame['SCI'].data.shape)
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
 
-        wavelenth_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
-        wavelengths_polynomial = Legendre(coef=wavelenth_solution.coefficients[order - 1],
-                                          domain=wavelenth_solution.domains[order - 1])
+        wavelength_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
+        wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
+                                          domain=wavelength_solution.domains[order - 1])
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)
         width_polynomal = header_to_polynomial(frame['PROFILEFITS'].header, 'WID', order)
         for polynomial, key in zip([order_polynomial, center_polynomial, width_polynomal, wavelengths_polynomial],
@@ -99,7 +86,6 @@ def make_2d_sci_plot(frame, filename):
                                              wavelengths_polynomial, extract_lower_n_sigma, upper_lower_n_sigma,
                                              bkg_left_upper_n_sigma, bkg_right_lower_n_sigma, bkg_left_lower_n_sigma,
                                              bkg_right_upper_n_sigma)
-        print('Got here', f'{extract_lower_n_sigma=}', f'{upper_lower_n_sigma=}', f'{bkg_left_upper_n_sigma=}', f'{bkg_right_lower_n_sigma=}', f'{bkg_left_lower_n_sigma=}', f'{bkg_right_upper_n_sigma=}')
         if order == 2:
             center_name = 'Extraction Center'
             center_legend = True
@@ -270,7 +256,7 @@ def make_arc_line_plots(arc_frame_hdu):
         figure_data.append(
             dict(
                 type='scatter', x=residuals_wavelengths.tolist(), y=residuals.tolist(),
-                mode='markers', marker=dict(color='#023858'),
+                mode='markers', marker=dict(color=DARK_BLUE),
                 hovertext=residual_hover_text,
                 hovertemplate='%{y}\u212B: %{hovertext}<extra></extra>',
                 xaxis=f'x{plot_column[order] + 2}', yaxis=f'y{plot_column[order] + 2}'
@@ -336,7 +322,7 @@ def make_profile_plot(sci_2d_frame):
 
     figure_data = []
     plot_row = {2: 1, 1: 2}
-    # Define the coordinate refernce plot manually per order
+    # Define the coordinate reference plot manually per order
     reference_axes = {2: 1, 1: 3}
     # Approximate wavelength center to plot the profile
     order_center = {1: 7000, 2: 4500}
@@ -359,7 +345,7 @@ def make_profile_plot(sci_2d_frame):
             model_name = None
             data_name = None
         figure_data.append(
-            unfilled_histogram(data['y_order'], data['data'], '#023858', name=data_name, legend='legend2',
+            unfilled_histogram(data['y_order'], data['data'], DARK_BLUE, name=data_name, legend='legend2',
                                axis=2 * plot_row[order] - 1),
         )
 
@@ -373,7 +359,7 @@ def make_profile_plot(sci_2d_frame):
             dict(
                 type='scatter', x=traced_points['wavelength'],
                 y=traced_points['center'],
-                mode='markers', marker={'color': '#023858'},
+                mode='markers', marker={'color': DARK_BLUE},
                 hoverinfo='skip', showlegend=False,
                 xaxis=f'x{plot_row[order] * 2}', yaxis=f'y{plot_row[order] * 2}'
             )
