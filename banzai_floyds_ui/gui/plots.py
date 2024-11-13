@@ -18,6 +18,9 @@ import json
 template_path = importlib.resources.files('banzai_floyds_ui.gui').joinpath('data/plotly_template.json')
 PLOTLY_TEMPLATE = json.loads(template_path.read_text())
 
+ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM = 'erg s\u207B\u00B9 cm\u207B\u00B2 \u212B\u207B\u00B9'
+ANGSTROM = '\u212B'
+
 
 def make_2d_sci_plot(frame, filename):
     zmin, zmax = np.percentile(frame['SCI'].data, [1, 99])
@@ -172,8 +175,7 @@ def make_arc_2d_plot(arc_frame_hdu, arc_filename):
 
 
 def make_arc_line_plots(arc_frame_hdu):
-    """Make a plot for each order showing the arc lines and their residulas"""
-
+    """Make a plot for each order showing the arc lines and their residuls"""
     # We generate the subplots layout manually to make passing things easier between the front and backend
     # Note the origin is in the top left corner for plotly for some reason
     # This is equivalent rows=2, cols=2, vertical_spacing=0.02, horizontal_spacing=0.05, shared_xaxes=True
@@ -189,9 +191,9 @@ def make_arc_line_plots(arc_frame_hdu):
         'yaxis4': {'anchor': 'x4', 'domain': [0.0, 0.49]}
     }
     layout['yaxis']['title'] = {'text': 'Flux (counts)'}
-    layout['yaxis3']['title'] = {'text': 'Residuals (\u212B)'}
-    layout['xaxis3']['title'] = {'text': 'Wavelength (\u212B)'}
-    layout['xaxis4']['title'] = {'text': 'Wavelength (\u212B)'}
+    layout['yaxis3']['title'] = {'text': f'Residuals ({ANGSTROM})'}
+    layout['xaxis3']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
+    layout['xaxis4']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
     layout['xaxis3']['tickformat'] = '.0f'
     layout['xaxis4']['tickformat'] = '.0f'
 
@@ -256,7 +258,7 @@ def make_arc_line_plots(arc_frame_hdu):
                 type='scatter', x=residuals_wavelengths.tolist(), y=residuals.tolist(),
                 mode='markers', marker=dict(color=DARK_BLUE),
                 hovertext=residual_hover_text,
-                hovertemplate='%{y}\u212B: %{hovertext}<extra></extra>',
+                hovertemplate='%{y}' + ANGSTROM + ': %{hovertext}<extra></extra>',
                 xaxis=f'x{plot_column[order] + 2}', yaxis=f'y{plot_column[order] + 2}'
             )
         )
@@ -458,13 +460,13 @@ def make_1d_sci_plot(frame_1d):
         'xaxis3': {'anchor': 'y3', 'domain': [0.0, 0.465], 'matches': 'x5', 'showticklabels': False},
         'xaxis4': {'anchor': 'y4', 'domain': [0.535, 1.0], 'matches': 'x6', 'showticklabels': False},
         'xaxis5': {'anchor': 'y5', 'domain': [0.0, 0.465], 'tickformat': '.0f',
-                   'title': {'text': 'Wavelength (\u212B)'}},
+                   'title': {'text': f'Wavelength ({ANGSTROM})'}},
         'xaxis6': {'anchor': 'y6', 'domain': [0.535, 1.0], 'tickformat': '.0f',
-                   'title': {'text': 'Wavelength (\u212B)'}},
+                   'title': {'text': f'Wavelength ({ANGSTROM})'}},
         'yaxis': {
             'anchor': 'x',
             'domain': [0.68, 1.0],
-            'title': {'text': 'Flux (erg s\u207B\u00B9 cm\u207B\u00B2 \u212B\u207B\u00B9)'},
+            'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'},
             'exponentformat': 'power'
         },
         'yaxis2': {'anchor': 'x2', 'domain': [0.68, 1.0], 'exponentformat': 'power'},
@@ -489,15 +491,15 @@ def make_combined_extraction_plot(frame_1d):
     extraction_data = frame_1d['SPECTRUM'].data
     extraction_data.sort(order='wavelength')
     figure_data = dict(type='scatter', x=extraction_data['wavelength'], y=extraction_data['flux'],
-                       line=dict(color='#023858'), mode='lines')
+                       line=dict(color=DARK_BLUE), mode='lines')
     layout = {
         'template': PLOTLY_TEMPLATE,
         'title': f'Combined Extraction: {frame_1d[0].header["ORIGNAME"].replace("-e00", "-e91-1d")}',
         'showlegend': False,
         'yaxis': {
-            'title': {'text': 'Flux (erg s\u207B\u00B9 cm\u207B\u00B2 \u212B\u207B\u00B9)'},
+            'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'},
             'exponentformat': 'power'
         },
-        'xaxis': {'title': 'Wavelength (\u212B)', 'tickformat': '.0f'}
+        'xaxis': {'title': f'Wavelength ({ANGSTROM})', 'tickformat': '.0f'}
     }
     return {'data': [figure_data,], 'layout': layout}
