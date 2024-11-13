@@ -20,7 +20,9 @@ for i, filename in enumerate(file_list):
                      'filename': os.path.basename(filename),
                      'INSTRUME': hdu[hdu_index].header['INSTRUME'],
                      'SITEID': hdu[hdu_index].header['INSTRUME'],
-                     'filepath': os.path.dirname(filename),}
+                     'filepath': os.path.dirname(filename),
+                     'OBJECT': hdu[hdu_index].header['OBJECT'],
+                     'PROPID': hdu[hdu_index].header['PROPID']}
     except KeyError:
         continue
 

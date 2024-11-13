@@ -23,6 +23,10 @@ def xy_to_svg_path(x, y):
 
 
 def unfilled_histogram(x, y, color, name=None, legend=None, axis=''):
+    # Sort the data just in case
+    x_inds = np.argsort(x)
+    x = x[x_inds]
+    y = y[x_inds]
     # I didn't like how the plotly histogram looked so I wrote my own
     x_avgs = (x[1:] + x[:-1]) / 2.0
     x_lows = np.hstack([x[0] + x[0] - x_avgs[0], x_avgs])

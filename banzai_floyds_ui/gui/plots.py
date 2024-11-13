@@ -1,7 +1,5 @@
 import importlib.resources
 from astropy.table import Table
-from django.conf import settings
-from banzai_floyds_ui.gui.utils.file_utils import download_frame
 from banzai_floyds_ui.gui.utils.header_utils import header_to_polynomial
 
 import numpy as np
@@ -19,6 +17,9 @@ import json
 
 template_path = importlib.resources.files('banzai_floyds_ui.gui').joinpath('data/plotly_template.json')
 PLOTLY_TEMPLATE = json.loads(template_path.read_text())
+
+ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM = 'erg s\u207B\u00B9 cm\u207B\u00B2 \u212B\u207B\u00B9'
+ANGSTROM = '\u212B'
 
 
 def make_2d_sci_plot(frame, filename):
@@ -62,7 +63,7 @@ def make_2d_sci_plot(frame, filename):
         wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
                                           domain=wavelength_solution.domains[order - 1])
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)
-        width_polynomal = header_to_polynomial(frame['PROFILEFITS'].header, 'WID', order)
+        width_polynomal = header_to_polynomial(frame['PROFILEFITS'].header, 'SIG', order)
         for polynomial, key in zip([order_polynomial, center_polynomial, width_polynomal, wavelengths_polynomial],
                                    ['order_center', 'profile_center', 'profile_sigma', 'wavelength']):
             for attribute in ['coef', 'domain']:
@@ -174,8 +175,7 @@ def make_arc_2d_plot(arc_frame_hdu, arc_filename):
 
 
 def make_arc_line_plots(arc_frame_hdu):
-    """Make a plot for each order showing the arc lines and their residulas"""
-
+    """Make a plot for each order showing the arc lines and their residuls"""
     # We generate the subplots layout manually to make passing things easier between the front and backend
     # Note the origin is in the top left corner for plotly for some reason
     # This is equivalent rows=2, cols=2, vertical_spacing=0.02, horizontal_spacing=0.05, shared_xaxes=True
@@ -191,9 +191,9 @@ def make_arc_line_plots(arc_frame_hdu):
         'yaxis4': {'anchor': 'x4', 'domain': [0.0, 0.49]}
     }
     layout['yaxis']['title'] = {'text': 'Flux (counts)'}
-    layout['yaxis3']['title'] = {'text': 'Residuals (\u212B)'}
-    layout['xaxis3']['title'] = {'text': 'Wavelength (\u212B)'}
-    layout['xaxis4']['title'] = {'text': 'Wavelength (\u212B)'}
+    layout['yaxis3']['title'] = {'text': f'Residuals ({ANGSTROM})'}
+    layout['xaxis3']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
+    layout['xaxis4']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
     layout['xaxis3']['tickformat'] = '.0f'
     layout['xaxis4']['tickformat'] = '.0f'
 
@@ -258,7 +258,7 @@ def make_arc_line_plots(arc_frame_hdu):
                 type='scatter', x=residuals_wavelengths.tolist(), y=residuals.tolist(),
                 mode='markers', marker=dict(color=DARK_BLUE),
                 hovertext=residual_hover_text,
-                hovertemplate='%{y}\u212B: %{hovertext}<extra></extra>',
+                hovertemplate='%{y}' + ANGSTROM + ': %{hovertext}<extra></extra>',
                 xaxis=f'x{plot_column[order] + 2}', yaxis=f'y{plot_column[order] + 2}'
             )
         )
@@ -325,19 +325,25 @@ def make_profile_plot(sci_2d_frame):
     # Define the coordinate reference plot manually per order
     reference_axes = {2: 1, 1: 3}
     # Approximate wavelength center to plot the profile
-    order_center = {1: 7000, 2: 4500}
+    order_middle = {1: 7000, 2: 4500}
     initial_extraction_info = {'positions': {'1': {}, '2': {}}, 'refsigma': {}, 'refcenter': {}}
     shapes = []
 
     for order in [2, 1]:
-        binned_data = Table(sci_2d_frame['BINNED2D'].data).group_by(('order', 'wavelength_bin'))
+        binned_data = Table(sci_2d_frame['BINNED2D'].data).group_by(('order', 'order_wavelength_bin'))
         # We have to remove the last index here because astropy prepolulates it with the final row in the table so it
         # knows where to start if you add a new group
-        wavelength_bins = np.array([binned_data[index]['wavelength'] for index in binned_data.groups.indices[:-1]])
-        closest_wavelength_bin = np.argmin(np.abs(wavelength_bins - order_center[order]))
-        data = binned_data[binned_data.groups.indices[closest_wavelength_bin]:
-                           binned_data.groups.indices[closest_wavelength_bin + 1]]
+        wavelength_bins = []
+        bin_indices = []
+        for index in binned_data.groups.indices[:-1]:
+            if binned_data[index]['order'] == order:
+                wavelength_bins.append(binned_data[index]['order_wavelength_bin'])
+                bin_indices.append(index)
 
+        closest_wavelength_bin = bin_indices[np.argmin(np.abs(np.array(wavelength_bins) - order_middle[order]))]
+        ref_index = int(np.where(binned_data.groups.indices == closest_wavelength_bin)[0])
+        next_bin_index = binned_data.groups.indices[ref_index + 1]
+        data = binned_data[closest_wavelength_bin: next_bin_index]
         if order == 2:
             model_name = 'Model'
             data_name = 'Data'
@@ -375,11 +381,11 @@ def make_profile_plot(sci_2d_frame):
         )
         # Add in the extraction center and region and background region lines
         # We do this based on header keywords, but we really should do it on the binned data
-        extract_center = center_polynomial(order_center[order])
+        extract_center = center_polynomial(order_middle[order])
         initial_extraction_info['refcenter'][str(order)] = extract_center
 
-        width_polynomial = header_to_polynomial(sci_2d_frame['PROFILEFITS'].header, 'WID', order)
-        extract_sigma = width_polynomial(order_center[order])
+        width_polynomial = header_to_polynomial(sci_2d_frame['PROFILEFITS'].header, 'SIG', order)
+        extract_sigma = width_polynomial(order_middle[order])
         initial_extraction_info['refsigma'][str(order)] = extract_sigma
 
         extract_lower_n_sigma = sci_2d_frame['SCI'].header[f'XTRTW{order}0']
@@ -426,12 +432,10 @@ def make_profile_plot(sci_2d_frame):
     return {'data': figure_data, 'layout': layout}, initial_extraction_info
 
 
-def make_1d_sci_plot(frame_id, archive_header):
-
-    frame_1d = download_frame(url=f'{settings.ARCHIVE_URL}{frame_id}/', headers=archive_header)
-    frame_data = frame_1d[1].data
+def make_1d_sci_plot(frame_1d):
+    frame_data = frame_1d['EXTRACTED'].data
     # We again make the layout dict manually. Below is equivilent to
-    # make_subplots(rows=3, cols=2, vertical_spacing=0.02, horizontal_spacing=0.07, shared_xaxes=True, 
+    # make_subplots(rows=3, cols=2, vertical_spacing=0.02, horizontal_spacing=0.07, shared_xaxes=True,
     # subplot_titles=['Blue Order (order=2)', 'Red Order (order=1)', None, None, None, None])
     title_dict = {
         'text': f"1-D Extractions: {frame_1d[0].header['ORIGNAME'].replace('-e00', '-e91-1d')}",
@@ -456,13 +460,13 @@ def make_1d_sci_plot(frame_id, archive_header):
         'xaxis3': {'anchor': 'y3', 'domain': [0.0, 0.465], 'matches': 'x5', 'showticklabels': False},
         'xaxis4': {'anchor': 'y4', 'domain': [0.535, 1.0], 'matches': 'x6', 'showticklabels': False},
         'xaxis5': {'anchor': 'y5', 'domain': [0.0, 0.465], 'tickformat': '.0f',
-                   'title': {'text': 'Wavelength (\u212B)'}},
+                   'title': {'text': f'Wavelength ({ANGSTROM})'}},
         'xaxis6': {'anchor': 'y6', 'domain': [0.535, 1.0], 'tickformat': '.0f',
-                   'title': {'text': 'Wavelength (\u212B)'}},
+                   'title': {'text': f'Wavelength ({ANGSTROM})'}},
         'yaxis': {
             'anchor': 'x',
             'domain': [0.68, 1.0],
-            'title': {'text': 'Flux (erg s\u207B\u00B9 cm\u207B\u00B2 \u212B\u207B\u00B9)'},
+            'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'},
             'exponentformat': 'power'
         },
         'yaxis2': {'anchor': 'x2', 'domain': [0.68, 1.0], 'exponentformat': 'power'},
@@ -481,3 +485,21 @@ def make_1d_sci_plot(frame_id, archive_header):
     figure_data = plot_extracted_data(frame_data)
 
     return {'data': figure_data, 'layout': layout}
+
+
+def make_combined_extraction_plot(frame_1d):
+    extraction_data = frame_1d['SPECTRUM'].data
+    extraction_data.sort(order='wavelength')
+    figure_data = dict(type='scatter', x=extraction_data['wavelength'], y=extraction_data['flux'],
+                       line=dict(color=DARK_BLUE), mode='lines')
+    layout = {
+        'template': PLOTLY_TEMPLATE,
+        'title': f'Combined Extraction: {frame_1d[0].header["ORIGNAME"].replace("-e00", "-e91-1d")}',
+        'showlegend': False,
+        'yaxis': {
+            'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'},
+            'exponentformat': 'power'
+        },
+        'xaxis': {'title': f'Wavelength ({ANGSTROM})', 'tickformat': '.0f'}
+    }
+    return {'data': [figure_data,], 'layout': layout}
