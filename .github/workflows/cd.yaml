@@ -2,7 +2,7 @@ name: "Continuous Deployment"
 on:
   push:
     branches:
-      - main
+      - fix/csrf
   release:
     types:
       - published
