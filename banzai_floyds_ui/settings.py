@@ -22,13 +22,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0*$4nwm8zd$jcc*xlwm$2nm_=r6bn5rv@#k7jrta^dy&c*3)(y'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-0*$4nwm8zd$jcc*xlwm$2nm_=r6bn5rv@#k7jrta^dy&c*3)(y')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', False)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
+SECURE_SSL_REDIRECT = not DEBUG
+
+SESSION_COOKIE_SECURE = not DEBUG
+
+CSRF_COOKIE_SECURE = not DEBUG
 
 # Application definition
 
@@ -93,7 +98,7 @@ else:
         'default':
             {
                 'BACKEND': 'django_redis.cache.RedisCache',
-                "LOCATION": os.environ['REDIS_URL'],
+                "LOCATION": f"redis://{os.eniron['REDIS_HOST']}/{os.environ['REDIS_PORT']}",
                 'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'}
             }
     }
