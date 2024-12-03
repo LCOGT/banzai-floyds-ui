@@ -31,6 +31,8 @@ spec:
             - --timeout=$(GUNICORN_TIMEOUT)
             - --access-logfile=-
             - --error-logfile=-
+            - --capture-output
+            - --enable-stdio-inheritance
             - banzai_floyds_ui.gui.wsgi:application
 
           env:
