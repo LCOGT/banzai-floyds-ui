@@ -86,7 +86,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'banzai_floyds_ui.gui.wsgi.application'
 
-if os.environ.get('REDIS_URL') is None:
+if os.environ.get('REDIS_HOST') is None:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
