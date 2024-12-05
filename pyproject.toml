@@ -28,6 +28,7 @@ dependencies = [
   "fontawesomefree",
   "requests",
   "django_redis",
+  "django_extensions",
   "whitenoise",
   "httpx",
   "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.11.1",

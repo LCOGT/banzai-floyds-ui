@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-0*$4nwm8zd$jcc*xlwm$2nm_=r6bn5rv@#k7jrta^dy&c*3)(y')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', False)
+DEBUG = eval(os.getenv('DEBUG', False))
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_extensions',
     'bootstrap4',
     'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     'dpd_static_support',
@@ -98,7 +99,7 @@ else:
         'default':
             {
                 'BACKEND': 'django_redis.cache.RedisCache',
-                "LOCATION": f"redis://{os.eniron['REDIS_HOST']}/{os.environ['REDIS_PORT']}",
+                "LOCATION": f"redis://{os.environ['REDIS_HOST']}/{os.environ['REDIS_PORT']}",
                 'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'}
             }
     }
