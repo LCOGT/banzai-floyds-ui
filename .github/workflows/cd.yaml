@@ -2,7 +2,7 @@ name: "Continuous Deployment"
 on:
   push:
     branches:
-      - fix/csrf
+      - main
   release:
     types:
       - published
@@ -11,5 +11,3 @@ jobs:
   cd:
     uses: LCOGT/reusable-workflows/.github/workflows/continuous-deployment.yaml@main
     secrets: inherit
-
-# Test update noop counter: 1
