@@ -14,6 +14,8 @@ WORKDIR /banzai-floyds-ui/banzai_floyds_ui
 
 RUN python manage.py collectstatic
 
+RUN python manage.py createcachetable
+
 RUN python manage.py makemigrations
 
 RUN python manage.py migrate

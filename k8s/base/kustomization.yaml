@@ -17,3 +17,4 @@ configMapGenerator:
       - REDIS_PORT=6379
       - DEBUG=1
       - DB_ADDRESS=sqlite:///test.db
+      - OPENTSDB_PYTHON_METRICS_TEST_MODE=1
