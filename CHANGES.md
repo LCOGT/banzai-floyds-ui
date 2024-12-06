@@ -1,3 +1,7 @@
+0.3.1 (2024-12-06)
+------------------
+- Deployment fixes
+
 0.3.0 (2024-11-12)
 ------------------
 - Added a plot for the combined extraction fo both orders

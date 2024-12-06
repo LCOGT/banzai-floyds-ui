@@ -4,9 +4,17 @@ kind: Kustomization
 resources:
   - ./deploy-server.yaml
   - ./svc-server.yaml
+  - ./redis-pvc.yaml
+  - ./redis-deploy.yaml
+  - ./redis-service.yaml
   
 configMapGenerator:
   - name: env
     literals:
       - ARCHIVE_URL=https://archive-api.lco.global/frames/
       - OBSPORTAL_AUTH_URL=https://observe.lco.global/api/api-token-auth/
+      - REDIS_HOST=redis-service
+      - REDIS_PORT=6379
+      - DEBUG=1
+      - DB_ADDRESS=sqlite:///test.db
+      - OPENTSDB_PYTHON_METRICS_TEST_MODE=1
