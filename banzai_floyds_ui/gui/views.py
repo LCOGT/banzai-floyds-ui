@@ -3,6 +3,8 @@ from django.views.decorators.http import require_http_methods
 from banzai_floyds_ui.gui.forms import LoginForm
 from django.views.decorators.csrf import csrf_protect
 from django.conf import settings
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 import requests
 
 
@@ -48,3 +50,8 @@ def logout_view(request):
     if 'username' in request.session:
         del request.session['username']
     return render(request, 'floyds.html')
+
+
+@api_view(['GET'])
+def status_view(request):
+    return Response({'message': 'BANZAI-FLOYDS service is healthy.'})

@@ -19,7 +19,6 @@ from banzai.utils.stage_utils import get_stages_for_individual_frame
 from banzai_floyds.frames import FLOYDSFrameFactory
 from banzai_floyds import settings
 from django.conf import settings as django_settings
-from banzai_floyds.utils.profile_utils import profile_fits_to_data
 import os
 import banzai.main
 import io

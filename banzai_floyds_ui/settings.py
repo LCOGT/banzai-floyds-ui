@@ -22,13 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0*$4nwm8zd$jcc*xlwm$2nm_=r6bn5rv@#k7jrta^dy&c*3)(y'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-0*$4nwm8zd$jcc*xlwm$2nm_=r6bn5rv@#k7jrta^dy&c*3)(y')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = eval(os.getenv('DEBUG', 'False'))
 
-ALLOWED_HOSTS = ['*']
-
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 
@@ -40,10 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_extensions',
     'bootstrap4',
     'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     'dpd_static_support',
-    'fontawesomefree'
+    'fontawesomefree',
+    'django_redis'
 ]
 
 MIDDLEWARE = [
@@ -60,6 +61,7 @@ MIDDLEWARE = [
 ]
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
 ROOT_URLCONF = 'banzai_floyds_ui.gui.urls'
 
@@ -81,11 +83,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'banzai_floyds_ui.gui.wsgi.application'
 
-if os.environ.get('REDIS_URL') is None:
+if os.environ.get('REDIS_HOST') is None:
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake",
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache_table",
         }
     }
 else:
@@ -93,7 +95,7 @@ else:
         'default':
             {
                 'BACKEND': 'django_redis.cache.RedisCache',
-                "LOCATION": os.environ['REDIS_URL'],
+                "LOCATION": f"redis://{os.environ['REDIS_HOST']}:{os.environ['REDIS_PORT']}",
                 'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'}
             }
     }
@@ -102,14 +104,24 @@ else:
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.getenv('FLOYDS_UI_DB_HOST') is None:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
-
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': os.getenv('FLOYDS_UI_DB_ENGINE', 'django.db.backends.postgresql'),
+            'NAME': os.environ['FLOYDS_UI_DB_NAME'],
+            'USER': os.environ['FLOYDS_UI_DB_USER'],
+            'PASSWORD': os.environ['FLOYDS_UI_DB_PASSWORD'],
+            'HOST': os.environ['FLOYDS_UI_DB_HOST'],
+            'PORT': os.getenv('FLOYDS_UI_DB_PORT', '5432'),
+        }
+    }
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 
@@ -128,6 +140,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://127.0.0.1').split(',')
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/

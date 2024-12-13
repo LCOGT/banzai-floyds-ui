@@ -15,13 +15,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from banzai_floyds_ui.gui.views import banzai_floyds_view, login_view, logout_view
+from banzai_floyds_ui.gui.views import banzai_floyds_view, login_view, logout_view, status_view
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api', include('banzai_floyds_ui.api.urls')),
     path('', banzai_floyds_view, name="banzai-floyds"),
+    path('status', status_view, name="status"),
     path('login', login_view, name="login"),
     path('logout', logout_view, name="logout"),
     path('django_plotly_dash', include('django_plotly_dash.urls')),

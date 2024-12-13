@@ -12,6 +12,12 @@ RUN pip install --no-cache-dir .
 
 WORKDIR /banzai-floyds-ui/banzai_floyds_ui
 
+RUN python manage.py collectstatic
+
+RUN python manage.py createcachetable
+
+RUN python manage.py makemigrations
+
 RUN python manage.py migrate
 
 CMD [ \
@@ -20,6 +26,8 @@ CMD [ \
     "--worker-class=gevent", \
     "--workers=4", \
     "--timeout=300", \
+    "--capture-output", \
+    "--enable-stdio-inheritance", \
     "--access-logfile=-", \
     "--error-logfile=-", \
     "banzai_floyds_ui.gui.wsgi:application" \
