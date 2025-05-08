@@ -36,16 +36,35 @@ spec:
             - banzai_floyds_ui.gui.wsgi:application
 
           env:
-            - name: GUNICORN_WORKERS
-              value: "4"
-            - name: GUNICORN_TIMEOUT
-              value: "300"
+            - name: AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: lco-local-secrets
+                  key: auth-token
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: lco-local-secrets
+                  key: aws-access-key-id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lco-local-secrets
+                  key: aws-secret-access-key
+                  optional: true
+            - name: DB_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: lco-local-secrets
+                  key: banzai-db-address
+                  optional: true
 
           envFrom:
             - configMapRef:
                 name: env
                 optional: false
-
           ports:
             - name: http
               containerPort: 8080

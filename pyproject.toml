@@ -1,17 +1,16 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["banzai_floyds_ui*"]
-
-[tool.setuptools.package-data]
-"banzai_floyds_ui" = ["static/*"]
-"banzai_floyds_ui.gui" = ["templates/*", "data/*"]
+requires = ["poetry-core>=2.0.0,<3.0.0",
+            "cython", "extension-helpers",
+            "numpy>=1.24"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
-dynamic = ["version"]
+version = "0.4.0"
 name = "banzai_floyds_ui"
+requires-python = ">=3.10,<4"
+description = "UI for BANZAI Data Reduction for FLOYDS spectra"
+readme = "README.md"
+
 dependencies = [
   "django",
   "dash>=2.17",
@@ -30,8 +29,9 @@ dependencies = [
   "django_redis",
   "django_extensions",
   "whitenoise",
+  "torch",
   "httpx",
-  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.11.1",
+  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.17.0",
   "scipy"
 ]
 
@@ -39,3 +39,18 @@ dependencies = [
 test = [
     "flask"
 ]
+
+[tool.poetry]
+packages = [
+  { include = "banzai_floyds_ui" }
+]
+
+[tool.poetry.dependencies]
+torch = [
+    { version = "^2.3", source = "pytorch-cpu"},
+]
+
+[[tool.poetry.source]]
+    name     = "pytorch-cpu"
+    priority = "explicit"
+    url      = "https://download.pytorch.org/whl/cpu"

@@ -1,16 +1,18 @@
-FROM ghcr.io/lcogt/banzai-floyds:0.11.1
+FROM ghcr.io/lcogt/banzai-floyds:0.17.1
 
-WORKDIR /banzai-floyds-ui
+USER root
 
-COPY ./pyproject.toml ./dependencies.lock ./
+RUN poetry config virtualenvs.create false
 
-RUN pip install --no-cache -r dependencies.lock
+COPY pyproject.toml poetry.lock /banzai-floyds-ui/
 
-COPY . .
+RUN poetry install --directory=/banzai-floyds-ui --no-root --no-cache
 
-RUN pip install --no-cache-dir .
+COPY . /banzai-floyds-ui
 
-WORKDIR /banzai-floyds-ui/banzai_floyds_ui
+RUN poetry install --directory /banzai-floyds-ui --no-cache
+
+WORKDIR /banzai-floyds-ui/banzai_floyds_ui/
 
 RUN python manage.py collectstatic
 
