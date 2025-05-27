@@ -34,7 +34,7 @@ def login_view(request):
             return render(request, 'floyds.html', {'form': form})
         else:
             request.session['auth_token'] = response.json()['token']
-            request.session['django_plotly_dash'] = {'auth_token': request.session['auth_token']}
+            request.session['django_plotly_dash'] = {'auth_token': request.session['auth_token'], 'username': username}
             request.session['username'] = username
             return render(request, 'floyds.html')
 
@@ -47,6 +47,8 @@ def logout_view(request):
     if 'auth_token' in request.session['django_plotly_dash']:
         del request.session['django_plotly_dash']['auth_token']
 
+    if 'username' in request.session['django_plotly_dash']:
+        del request.session['django_plotly_dash']['username']
     if 'username' in request.session:
         del request.session['username']
     return render(request, 'floyds.html')

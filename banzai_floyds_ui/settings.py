@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 import os
-from lcogt_logging import LCOGTFormatter
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -58,6 +57,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_plotly_dash.middleware.BaseMiddleware',
     'django_plotly_dash.middleware.ExternalRedirectionMiddleware',
+    'banzai_floyds_ui.gui.middleware.CustomHeaderMiddleware',
 ]
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -205,8 +205,9 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'default': {
-            '()': LCOGTFormatter
-        }
+            '()': 'lcogt_logging.LCOGTFormatter'
+        },
+
     },
     'handlers': {
         'console': {
@@ -217,7 +218,20 @@ LOGGING = {
     'loggers': {
         '': {
             'handlers': ['console'],
-            'level': 'INFO'
-        }
+            'level': 'INFO',
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'banzai': {
+            'handlers': [
+                'console'
+            ],
+            'level': 'INFO',
+            'propagate': False
+        },
+
     }
 }
