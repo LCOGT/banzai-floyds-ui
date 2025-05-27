@@ -210,7 +210,6 @@ def callback_dropdown_files(*args, **kwargs):
     request_params = [{'start': start_date, 'end': end_date, 'public': True, 'limit': 150,
                        'instrument_id': instrument_id, 'RLEVEL': 91, 'basename': '1d'}
                       for instrument_id in instrument_ids]
-    logger.info(f'Fetching data from archive f{archive_header}')
     responses = asyncio.run(fetch_all(archive_header, request_params))
     results = []
     for response in responses:

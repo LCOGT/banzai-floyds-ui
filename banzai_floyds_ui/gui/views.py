@@ -48,7 +48,7 @@ def logout_view(request):
         del request.session['django_plotly_dash']['auth_token']
 
     if 'username' in request.session['django_plotly_dash']:
-        del request.session['username']
+        del request.session['django_plotly_dash']['username']
     if 'username' in request.session:
         del request.session['username']
     return render(request, 'floyds.html')
