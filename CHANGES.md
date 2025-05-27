@@ -1,3 +1,7 @@
+0.4.0 (2025-05-27)
+------------------
+- Bugfix to saving re-extractions
+
 0.3.1 (2024-12-06)
 ------------------
 - Deployment fixes
