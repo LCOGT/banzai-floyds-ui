@@ -59,7 +59,7 @@ def make_2d_sci_plot(frame, filename):
                                   frame['SCI'].data.shape)
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
 
-        wavelength_solution = WavelengthSolution.from_header(frame['WAVELENGTH'].header, orders)
+        wavelength_solution = WavelengthSolution.from_fits(frame['WAVELENGTH'].header, orders)
         wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
                                           domain=wavelength_solution.domains[order - 1])
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)

@@ -5,7 +5,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0",
 build-backend = "poetry.core.masonry.api"
 
 [project]
-version = "0.5.0"
+version = "0.5.1"
 name = "banzai_floyds_ui"
 requires-python = ">=3.10,<4"
 description = "UI for BANZAI Data Reduction for FLOYDS spectra"
@@ -31,7 +31,7 @@ dependencies = [
   "whitenoise",
   "torch",
   "httpx",
-  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.17.0",
+  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.18.0",
   "scipy"
 ]
 
