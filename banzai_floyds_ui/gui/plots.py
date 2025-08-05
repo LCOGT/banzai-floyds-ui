@@ -59,7 +59,7 @@ def make_2d_sci_plot(frame, filename):
                                   frame['SCI'].data.shape)
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
 
-        wavelength_solution = WavelengthSolution.from_header(frame['WAVELENGTHS'].header, orders)
+        wavelength_solution = WavelengthSolution.from_header(frame['WAVELENGTH'].header, orders)
         wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
                                           domain=wavelength_solution.domains[order - 1])
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)
@@ -137,15 +137,15 @@ def make_arc_2d_plot(arc_frame_hdu, arc_filename):
     for order, order_height in zip(orders.order_ids, orders.order_heights):
         in_order = order == orders.data
         wavelength_to_x_interpolator = LinearNDInterpolator((y2d[in_order].ravel(),
-                                                             arc_frame_hdu['WAVELENGTHS'].data[in_order]),
+                                                             arc_frame_hdu['WAVELENGTH'].data[in_order]),
                                                             x2d[in_order].ravel())
         xmin, xmax = np.min(x2d[in_order]), np.max(x2d[in_order])
         x = np.arange(xmin, xmax + 1)
         y_center = orders.center(x)[order - 1]
         x_y_to_wavelength_intepolator = LinearNDInterpolator((x2d[in_order], y2d[in_order]),
-                                                             arc_frame_hdu['WAVELENGTHS'].data[in_order])
-        min_wavelength = np.min(arc_frame_hdu['WAVELENGTHS'].data[in_order])
-        max_wavelength = np.max(arc_frame_hdu['WAVELENGTHS'].data[in_order])
+                                                             arc_frame_hdu['WAVELENGTH'].data[in_order])
+        min_wavelength = np.min(arc_frame_hdu['WAVELENGTH'].data[in_order])
+        max_wavelength = np.max(arc_frame_hdu['WAVELENGTH'].data[in_order])
         for i, line in enumerate(arc_lines):
             if min_wavelength <= line['wavelength'] <= max_wavelength:
                 y_line_center = np.interp(line['wavelength'], x_y_to_wavelength_intepolator(x, y_center), y_center)
