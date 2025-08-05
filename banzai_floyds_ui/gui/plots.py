@@ -60,11 +60,11 @@ def make_2d_sci_plot(frame, filename):
         order_polynomial = np.polynomial.Legendre(orders.coeffs[order - 1], domain=orders.domains[order - 1])
 
         wavelength_solution = WavelengthSolution.from_fits(frame['WAVELENGTH'].header, orders)
-        wavelengths_polynomial = Legendre(coef=wavelength_solution.coefficients[order - 1],
-                                          domain=wavelength_solution.domains[order - 1])
+
         center_polynomial = header_to_polynomial(frame['PROFILEFITS'].header, 'CTR', order)
         width_polynomal = header_to_polynomial(frame['PROFILEFITS'].header, 'SIG', order)
-        for polynomial, key in zip([order_polynomial, center_polynomial, width_polynomal, wavelengths_polynomial],
+        for polynomial, key in zip([order_polynomial, center_polynomial, width_polynomal, 
+                                    wavelength_solution._wavelength_polynomials[order - 1]],
                                    ['order_center', 'profile_center', 'profile_sigma', 'wavelength']):
             for attribute in ['coef', 'domain']:
                 trace_info_to_store[key][str(order)][attribute] = getattr(polynomial, attribute)
@@ -84,7 +84,7 @@ def make_2d_sci_plot(frame, filename):
         bkg_right_upper_n_sigma = frame['SCI'].header[f'BKWO{order}11']
 
         x, traces = extraction_region_traces(order_polynomial, center_polynomial, width_polynomal,
-                                             wavelengths_polynomial, extract_lower_n_sigma, upper_lower_n_sigma,
+                                             wavelength_solution._wavelength_polynomials[order - 1], extract_lower_n_sigma, upper_lower_n_sigma,
                                              bkg_left_upper_n_sigma, bkg_right_lower_n_sigma, bkg_left_lower_n_sigma,
                                              bkg_right_upper_n_sigma)
         if order == 2:
