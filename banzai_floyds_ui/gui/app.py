@@ -37,7 +37,7 @@ settings.fpack = True
 settings.post_to_open_search = bool(os.environ.get('POST_TO_OPENSEARCH', False))
 settings.post_to_archive = bool(os.environ.get('POST_TO_ARCHIVE', False))
 settings.no_file_cache = True
-settings.db_address = os.environ['DB_ADDRESS']
+settings.db_address = os.environ['BANZAI_DB_ADDRESS']
 RUNTIME_CONTEXT = banzai.main.parse_args(settings, parse_system_args=False)
 
 
@@ -339,7 +339,7 @@ def callback_make_plots(*args, **kwargs):
     sci_2d_plot, extraction_data = make_2d_sci_plot(sci_2d_frame, sci_2d_filename)
 
     file_utils.cache_fits('science_2d_frame', sci_2d_frame)
-    cache.set('filename', sci_2d_frame['SCI'].header['ORIGNAME'] + '.fits')
+    cache.set('filename', sci_2d_frame['SCI'].header['ORIGNAME'])
 
     profile_plot, initial_extraction_info = make_profile_plot(sci_2d_frame)
 
@@ -454,16 +454,16 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
     # Starting at the extraction weights stage
     start_index = stages_to_do.index('banzai_floyds.background.BackgroundFitter')
     stages_to_do = stages_to_do[start_index:]
-
+    frames = [frame]
     for stage_name in stages_to_do:
         stage_constructor = import_utils.import_attribute(stage_name)
         stage = stage_constructor(runtime_context)
-        frames = stage.run([frame])
+        frames = stage.run(frames)
         if not frames:
             logger.error('Reduction stopped', extra_tags={'filename': filename})
             return
     logger.info('Reduction complete', extra_tags={'filename': filename})
-    return frame
+    return frames[0]
 
 
 # Note we include a container here for the extraction plots that always returns no update
