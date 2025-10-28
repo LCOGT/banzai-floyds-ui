@@ -1,5 +1,6 @@
 # BANZAI-FLOYDS-UI
-User interface for re-extraction using BANZAI-FLOYDS
+User interface for re-extraction using [BANZAI-FLOYDS](https://github.com/LCOGT/banzai-floyds) 
+[[docs](https://github.com/LCOGT/banzai-floyds-ui.git)]
 
 Installation
 ------------

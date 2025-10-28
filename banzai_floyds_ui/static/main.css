@@ -33,3 +33,9 @@ div.form-group#password-group {
 #site-picker .Select--single .Select-value {
     padding-top: 0.4rem;
 }
+
+.help-mark {
+    opacity: 0.5;
+    font-size-adjust: .3;
+    vertical-align: super;
+}

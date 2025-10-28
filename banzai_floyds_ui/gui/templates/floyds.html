@@ -5,12 +5,15 @@
 
 {%block content%}
 
-<h1>BANZAI-FLOYDS Reprocessing</h1>
-
+<h1>BANZAI-FLOYDS Reprocessing
+    <span class="help-mark" data-bs-toggle="tooltip" title="Visit the Docs">
+        <a href="https://banzai-floyds.readthedocs.io/en/latest/index.html" target="_blank"> ?</a>
+    </span>
+</h1>
 <p></p>
 <div class="card border-dark">
     <div class="card-body">
-        <div class="{%plotly_class name=" banzai-floyds" template_type="div-direct" %}">
+        <div class="{%plotly_class name=' banzai-floyds' template_type='div-direct' %}">
             {%plotly_direct name="banzai-floyds"%}
         </div>
     </div>
