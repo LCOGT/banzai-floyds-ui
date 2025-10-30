@@ -43,7 +43,7 @@ RUNTIME_CONTEXT = banzai.main.parse_args(settings, parse_system_args=False)
 
 def layout():
     last_week = datetime.date.today() - datetime.timedelta(days=7)
-    extraction_docs_link = 'https://banzai-floyds.readthedocs.io/en/latest/banzai_floyds/processing.html#extraction'
+    docs_link = 'https://banzai-floyds.readthedocs.io/en/latest/banzai_floyds/processing.html'
     optimal_extraction_help_text = 'Performs an extraction based on the algorithm and\n' \
                                    'methodology described by Horne 1986, PASP, 98, 609.'
     unweighted_extraction_help_text = 'Performs an unweighted extraction.'
@@ -127,7 +127,13 @@ def layout():
                     dcc.Store(id='extractions'),
                     dcc.Store(id='combined-extraction'),
                     html.Div([
-                        html.H3(['Arcs:']),
+                        html.H3(['Wavelength Calibration:',
+                                 html.A('?',
+                                        href=docs_link+'#wavelength-solution',
+                                        className='help-mark',
+                                        target="_blank",
+                                        title='Click for Docs')
+                                 ],),
                         dcc.Loading(
                             id='loading-arc-2d-plot-container',
                             type='default',
@@ -148,7 +154,13 @@ def layout():
                         ),
                     ], className='plot-group'),
                     html.Div([
-                        html.H3(['Profile Fit:']),
+                        html.H3(['Profile Fit:',
+                                 html.A('?',
+                                        href=docs_link+'#profile-fitting',
+                                        className='help-mark',
+                                        target="_blank",
+                                        title='Click for Docs'),
+                                 ]),
                         dcc.Loading(
                             id='loading-sci-2d-plot-container',
                             type='default',
@@ -171,7 +183,7 @@ def layout():
                     ], className='plot-group'),
                     html.Div([html.Span(['Extraction Type:',
                                          html.A('?',
-                                                href=extraction_docs_link,
+                                                href=docs_link+'#extraction',
                                                 className='help-mark',
                                                 target="_blank",
                                                 title='Click for Docs')],
@@ -187,7 +199,13 @@ def layout():
                                             ),
                              dbc.Button('Re-Extract', id='extract-button')]),
                     html.Div([
-                        html.H3(['Extractions:']),
+                        html.H3(['Extractions:',
+                                 html.A('?',
+                                        href=docs_link+'#extraction',
+                                        className='help-mark',
+                                        target="_blank",
+                                        title='Click for Docs')
+                                 ],),
                         dcc.Loading(
                             id='loading-extraction-plot-container',
                             type='default',

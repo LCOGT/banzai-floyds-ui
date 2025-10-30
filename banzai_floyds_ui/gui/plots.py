@@ -27,7 +27,7 @@ def make_2d_sci_plot(frame, filename):
     zmin, zmax = np.percentile(frame['SCI'].data, [1, 99])
 
     trace = dict(type='heatmap', z=frame['SCI'].data, colorscale=COLORMAP, zmin=zmin, zmax=zmax,
-                 hoverinfo='none', colorbar=dict(title=dict(text='Data (counts)')))
+                 hoverinfo='none', colorbar=dict(title=dict(text='Counts')))
 
     layout = dict(title=dict(text=f'2-D Science Frame: {filename}'), margin=dict(t=40, b=50, l=50, r=40),
                   height=370, template=PLOTLY_TEMPLATE)
@@ -124,7 +124,7 @@ def make_2d_sci_plot(frame, filename):
 def make_arc_2d_plot(arc_frame_hdu, arc_filename):
     zmin, zmax = np.percentile(arc_frame_hdu['SCI'].data, [1, 99])
     trace = dict(type='heatmap', z=arc_frame_hdu['SCI'].data, colorscale=COLORMAP, zmin=zmin, zmax=zmax,
-                 hoverinfo='none', colorbar=dict(title=dict(text='Data (counts)')))
+                 hoverinfo='none', colorbar=dict(title=dict(text='Counts')))
 
     layout = dict(margin=dict(t=50, b=50, l=50, r=40), height=370, template=PLOTLY_TEMPLATE)
 
@@ -182,7 +182,8 @@ def make_arc_line_plots(arc_frame_hdu):
     # Note the origin is in the top left corner for plotly for some reason
     # This is equivalent rows=2, cols=2, vertical_spacing=0.02, horizontal_spacing=0.05, shared_xaxes=True
     layout = {
-        'showlegend': False, 'autosize': True, 'margin': dict(l=0, r=0, t=0, b=0), 'template': PLOTLY_TEMPLATE,
+        'title': dict(text='Extracted Lines from Arc'),
+        'showlegend': False, 'autosize': True, 'margin': dict(l=0, r=0, t=25, b=0), 'template': PLOTLY_TEMPLATE,
         'xaxis': {'anchor': 'y', 'domain': [0.0, 0.475], 'matches': 'x3', 'showticklabels': False},
         'xaxis2': {'anchor': 'y2', 'domain': [0.525, 1.0], 'matches': 'x4', 'showticklabels': False},
         'xaxis3': {'anchor': 'y3', 'domain': [0.0, 0.475]},
@@ -196,6 +197,10 @@ def make_arc_line_plots(arc_frame_hdu):
     layout['yaxis3']['title'] = {'text': f'Residuals ({ANGSTROM})'}
     layout['xaxis3']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
     layout['xaxis4']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
+    layout['yaxis2']['side'] = 'right'
+    layout['yaxis4']['side'] = 'right'
+    layout['yaxis']['title'] = {'text': 'Flux (counts)'}
+    layout['yaxis3']['title'] = {'text': f'Residuals ({ANGSTROM})'}
     layout['xaxis3']['tickformat'] = '.0f'
     layout['xaxis4']['tickformat'] = '.0f'
 
@@ -471,17 +476,20 @@ def make_1d_sci_plot(frame_1d):
             'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'},
             'exponentformat': 'power'
         },
-        'yaxis2': {'anchor': 'x2', 'domain': [0.68, 1.0], 'exponentformat': 'power'},
+        'yaxis2': {'anchor': 'x2', 'domain': [0.68, 1.0], 'exponentformat': 'power', 'side': 'right',
+            'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'}},
         'yaxis3': {'anchor': 'x3', 'domain': [0.34, 0.66],
                    'title': {'text': 'Flux (counts)'}, 'exponentformat': 'power'},
-        'yaxis4': {'anchor': 'x4', 'domain': [0.34, 0.66], 'exponentformat': 'power'},
+        'yaxis4': {'anchor': 'x4', 'domain': [0.34, 0.66], 'exponentformat': 'power', 'side': 'right',
+                   'title': {'text': 'Flux (counts)'}},
         'yaxis5': {
             'anchor': 'x5',
             'domain': [0.0, 0.32],
             'title': {'text': 'Background (counts)'},
             'exponentformat': 'power'
         },
-        'yaxis6': {'anchor': 'x6', 'domain': [0.0, 0.32], 'exponentformat': 'power'}
+        'yaxis6': {'anchor': 'x6', 'domain': [0.0, 0.32], 'exponentformat': 'power', 'side': 'right',
+            'title': {'text': 'Background (counts)'}}
     }
 
     figure_data = plot_extracted_data(frame_data)
