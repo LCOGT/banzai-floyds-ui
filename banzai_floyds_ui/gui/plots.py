@@ -1,6 +1,7 @@
 import importlib.resources
 from astropy.table import Table
 from banzai_floyds_ui.gui.utils.header_utils import header_to_polynomial
+import plotly.graph_objects as go
 
 import numpy as np
 from numpy.polynomial.legendre import Legendre
@@ -26,13 +27,13 @@ def make_2d_sci_plot(frame, filename):
     zmin, zmax = np.percentile(frame['SCI'].data, [1, 99])
 
     trace = dict(type='heatmap', z=frame['SCI'].data, colorscale=COLORMAP, zmin=zmin, zmax=zmax,
-                 hoverinfo='none', colorbar=dict(title='Data (counts)'))
+                 hoverinfo='none', colorbar=dict(title=dict(text='Data (counts)')))
 
-    layout = dict(title=f'2-D Science Frame: {filename}', margin=dict(t=40, b=50, l=50, r=40),
+    layout = dict(title=dict(text=f'2-D Science Frame: {filename}'), margin=dict(t=40, b=50, l=50, r=40),
                   height=370, template=PLOTLY_TEMPLATE)
     layout['legend'] = dict(x=0, y=0.95)
-    layout['xaxis'] = dict(title='x (pixel)')
-    layout['yaxis'] = dict(title='y (pixel)')
+    layout['xaxis'] = dict(title=dict(text='x (pixel)'))
+    layout['yaxis'] = dict(title=dict(text='y (pixel)'))
     layout['shapes'] = []
     figure_data = [trace]
     trace_info_to_store = {
@@ -123,7 +124,7 @@ def make_2d_sci_plot(frame, filename):
 def make_arc_2d_plot(arc_frame_hdu, arc_filename):
     zmin, zmax = np.percentile(arc_frame_hdu['SCI'].data, [1, 99])
     trace = dict(type='heatmap', z=arc_frame_hdu['SCI'].data, colorscale=COLORMAP, zmin=zmin, zmax=zmax,
-                 hoverinfo='none', colorbar=dict(title='Data (counts)'))
+                 hoverinfo='none', colorbar=dict(title=dict(text='Data (counts)')))
 
     layout = dict(margin=dict(t=50, b=50, l=50, r=40), height=370, template=PLOTLY_TEMPLATE)
 
@@ -168,9 +169,10 @@ def make_arc_2d_plot(arc_frame_hdu, arc_filename):
                     name=name
                 ))
     layout['legend'] = dict(x=0, y=0.95)
-    layout['title'] = f'Arc Frame Used in Reduction: {arc_filename}'
-    layout['xaxis'] = dict(title='x (pixel)')
-    layout['yaxis'] = dict(title='y (pixel)')
+    layout['title'] = dict(text=f'Arc Frame Used in Reduction: {arc_filename}')
+    layout['xaxis'] = dict(title=dict(text='x (pixel)'))
+    layout['yaxis'] = dict(title=dict(text='y (pixel)'))
+
     return dict(data=figure_data, layout=layout)
 
 
@@ -494,12 +496,12 @@ def make_combined_extraction_plot(frame_1d):
                        line=dict(color=DARK_BLUE), mode='lines')
     layout = {
         'template': PLOTLY_TEMPLATE,
-        'title': f'Combined Extraction: {frame_1d[0].header["ORIGNAME"].replace("-e00", "-e91-1d")}',
+        'title': dict(text=f'Combined Extraction: {frame_1d[0].header["ORIGNAME"].replace("-e00", "-e91-1d")}'),
         'showlegend': False,
         'yaxis': {
             'title': {'text': f'Flux ({ERGS_PER_SECOND_PER_CM2_PER_ANGSTROM})'},
             'exponentformat': 'power'
         },
-        'xaxis': {'title': f'Wavelength ({ANGSTROM})', 'tickformat': '.0f'}
+        'xaxis': {'title': dict(text=f'Wavelength ({ANGSTROM})'), 'tickformat': '.0f'}
     }
     return {'data': [figure_data,], 'layout': layout}

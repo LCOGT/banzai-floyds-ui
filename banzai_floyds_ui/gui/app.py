@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html
+from dash import dcc, html, Output
 import dash_bootstrap_components as dbc
 from django_plotly_dash import DjangoDash
 import datetime
@@ -43,6 +43,10 @@ RUNTIME_CONTEXT = banzai.main.parse_args(settings, parse_system_args=False)
 
 def layout():
     last_week = datetime.date.today() - datetime.timedelta(days=7)
+    extraction_docs_link = 'https://banzai-floyds.readthedocs.io/en/latest/banzai_floyds/processing.html#extraction'
+    optimal_extraction_help_text = 'Performs an extraction based on the algorithm and\n' \
+                                   'methodology described by Horne 1986, PASP, 98, 609.'
+    unweighted_extraction_help_text = 'Performs an unweighted extraction.'
 
     return html.Div(
         id='main',
@@ -122,61 +126,83 @@ def layout():
                     dcc.Store(id='extraction-traces'),
                     dcc.Store(id='extractions'),
                     dcc.Store(id='combined-extraction'),
-                    dcc.Loading(
-                        id='loading-arc-2d-plot-container',
-                        type='default',
-                        children=[
-                            dcc.Graph(id='arc-2d-plot',
-                                      style={'display': 'inline-block',
-                                             'width': '100%', 'height': '550px;'}),
-                        ]
-                    ),
-                    dcc.Loading(
-                        id='loading-arc-1d-plot-container',
-                        type='default',
-                        children=[
-                            dcc.Graph(id='arc-1d-plot',
-                                      style={'display': 'inline-block',
-                                             'width': '100%', 'height': '100%;'}),
-                        ]
-                    ),
-                    dcc.Loading(
-                        id='loading-sci-2d-plot-container',
-                        type='default',
-                        children=[
-                            dcc.Graph(id='sci-2d-plot',
-                                      style={'display': 'inline-block',
-                                             'width': '100%', 'height': '550px;'}),
-                        ]
-                    ),
-                    dcc.Loading(
-                        id='loading-profile-plot-container',
-                        type='default',
-                        children=[
-                            dcc.Graph(id='profile-plot',
-                                      style={'display': 'inline-block',
-                                             'width': '100%', 'height': '550px;'},
-                                      config={'edits': {'shapePosition': True}}),
-                        ]
-                    ),
-                    html.Div(['Extraction Type:',
-                             dcc.RadioItems(['Optimal', 'Unweighted'], 'Optimal', inline=True, id='extraction-type',
-                                            style={"margin-right": "10px"}),
-                             dbc.Button('Re-Extract', id='extract-button')]),
-                    dcc.Loading(
-                        id='loading-extraction-plot-container',
-                        type='default',
-                        children=[
-                            html.Div([
-                                dcc.Graph(id='extraction-plot',
+                    html.Div([
+                        html.H3(['Arcs:']),
+                        dcc.Loading(
+                            id='loading-arc-2d-plot-container',
+                            type='default',
+                            children=[
+                                dcc.Graph(id='arc-2d-plot',
                                           style={'display': 'inline-block',
                                                  'width': '100%', 'height': '550px;'}),
-                                dcc.Graph(id='combined-extraction-plot',
+                            ]
+                        ),
+                        dcc.Loading(
+                            id='loading-arc-1d-plot-container',
+                            type='default',
+                            children=[
+                                dcc.Graph(id='arc-1d-plot',
                                           style={'display': 'inline-block',
-                                                 'width': '100%', 'height': '350px;'})
-                            ], id='extraction-plot-container')
-                        ]
-                    ),
+                                                 'width': '100%', 'height': '100%;'}),
+                            ]
+                        ),
+                    ], className='plot-group'),
+                    html.Div([
+                        html.H3(['Profile Fit:']),
+                        dcc.Loading(
+                            id='loading-sci-2d-plot-container',
+                            type='default',
+                            children=[
+                                dcc.Graph(id='sci-2d-plot',
+                                          style={'display': 'inline-block',
+                                                 'width': '100%', 'height': '550px;'}),
+                            ]
+                        ),
+                        dcc.Loading(
+                            id='loading-profile-plot-container',
+                            type='default',
+                            children=[
+                                dcc.Graph(id='profile-plot',
+                                          style={'display': 'inline-block',
+                                                 'width': '100%', 'height': '550px;'},
+                                          config={'edits': {'shapePosition': True}}),
+                            ]
+                        ),
+                    ], className='plot-group'),
+                    html.Div([html.Span(['Extraction Type:',
+                                         html.A('?',
+                                                href=extraction_docs_link,
+                                                className='help-mark',
+                                                target="_blank",
+                                                title='Click for Docs')],
+                                        ),
+                             dcc.RadioItems([{"label": html.Span(['Optimal', html.Span('?', className='help-mark')],
+                                                                 title=optimal_extraction_help_text,
+                                                                 style={"margin-right": "10px"}),
+                                              "value":'Optimal'},
+                                             {"label": html.Span(['Unweighted', html.Span('?', className='help-mark')],
+                                                                 title=unweighted_extraction_help_text),
+                                              "value":'Unweighted'}],
+                                            'Optimal', inline=True, id='extraction-type',
+                                            ),
+                             dbc.Button('Re-Extract', id='extract-button')]),
+                    html.Div([
+                        html.H3(['Extractions:']),
+                        dcc.Loading(
+                            id='loading-extraction-plot-container',
+                            type='default',
+                            children=[
+                                html.Div([
+                                    dcc.Graph(id='extraction-plot',
+                                              style={'display': 'inline-block',
+                                                     'width': '100%', 'height': '550px;'}),
+                                    dcc.Graph(id='combined-extraction-plot',
+                                              style={'display': 'inline-block',
+                                                     'width': '100%', 'height': '350px;'})
+                                ], id='extraction-plot-container')
+                            ]
+                        ),
+                    ], className='plot-group'),
                     dbc.Button('Save Extraction', id='save-button'),
                 ]
             )
@@ -313,13 +339,13 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
 
 
 @app.expanded_callback(
-    [dash.dependencies.Output('arc-2d-plot', 'figure'),
-     dash.dependencies.Output('arc-1d-plot', 'figure'),
-     dash.dependencies.Output('sci-2d-plot', 'figure'),
-     dash.dependencies.Output('profile-plot', 'figure'),
-     dash.dependencies.Output('extraction-plot', 'figure'),
-     dash.dependencies.Output('combined-extraction-plot', 'figure'),
-     dash.dependencies.Output('initial-extraction-info', 'data')],
+    [Output('arc-2d-plot', 'figure'),
+     Output('arc-1d-plot', 'figure'),
+     Output('sci-2d-plot', 'figure'),
+     Output('profile-plot', 'figure'),
+     Output('extraction-plot', 'figure'),
+     Output('combined-extraction-plot', 'figure'),
+     Output('initial-extraction-info', 'data')],
     dash.dependencies.Input('file-list-dropdown', 'value'), prevent_initial_call=True)
 def callback_make_plots(*args, **kwargs):
     frame_id = args[0]
