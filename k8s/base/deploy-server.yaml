@@ -54,7 +54,7 @@ spec:
                   name: lco-local-secrets
                   key: aws-secret-access-key
                   optional: true
-            - name: DB_ADDRESS
+            - name: BANZAI_DB_ADDRESS
               valueFrom:
                 secretKeyRef:
                   name: lco-local-secrets
