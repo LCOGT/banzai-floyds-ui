@@ -1,5 +1,5 @@
 # BANZAI-FLOYDS-UI
-User interface for re-extraction using [BANZAI-FLOYDS](https://github.com/LCOGT/banzai-floyds) 
+User interface for re-extraction using [BANZAI-FLOYDS](https://github.com/LCOGT/banzai-floyds)
 [[docs](https://github.com/LCOGT/banzai-floyds-ui.git)]
 
 Installation
@@ -12,7 +12,7 @@ Deployment
 ----------
 You can run a local development version.
 
-You will want to set a `DB_ADDRESS` environment variable that points to the location of a DB with Banzai Data.
+You will want to set a `BANZAI_DB_ADDRESS` environment variable that points to the location of a DB with Banzai Data.
 This can be either a local DB with some test data stored in it, or the production DB.
 
 Next,run the following commands to prepare the project and run a local server.

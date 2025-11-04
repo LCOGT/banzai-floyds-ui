@@ -37,7 +37,7 @@ settings.fpack = True
 settings.post_to_open_search = bool(os.environ.get('POST_TO_OPENSEARCH', False))
 settings.post_to_archive = bool(os.environ.get('POST_TO_ARCHIVE', False))
 settings.no_file_cache = True
-settings.db_address = os.environ['DB_ADDRESS']
+settings.db_address = os.environ['BANZAI_DB_ADDRESS']
 RUNTIME_CONTEXT = banzai.main.parse_args(settings, parse_system_args=False)
 
 
