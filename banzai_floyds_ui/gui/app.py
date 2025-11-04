@@ -221,7 +221,9 @@ def layout():
                             ]
                         ),
                     ], className='plot-group'),
-                    dbc.Button('Save Extraction', id='save-button'),
+                    dbc.Button(html.Span(['Save Extraction',
+                                          html.Span('?', className='help-mark')
+                                          ]), id='save-button', title="Overwrite existing extraction in Archive"),
                 ]
             )
         ]
