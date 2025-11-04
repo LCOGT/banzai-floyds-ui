@@ -1,28 +1,40 @@
 # BANZAI-FLOYDS-UI
-User interface for re-extraction using BANZAI-FLOYDS
+User interface for re-extraction using [BANZAI-FLOYDS](https://github.com/LCOGT/banzai-floyds)
+[[docs](https://banzai-floyds.readthedocs.io/en/latest/index.html)]
 
 Installation
 ------------
 ```
-pip install .
+poetry install
 ```
 
 Deployment
 ----------
-You can run a local development version either by running
+You can run a local development version.
+
+You will want to set a `BANZAI_DB_ADDRESS` environment variable that points to the location of a DB with Banzai Data.
+This can be either a local DB with some test data stored in it, or the production DB.
+
+Next,run the following commands to prepare the project and run a local server.
 
 ```
 python banzai_floyds_ui/manage.py migrate
+python banzai_floyds_ui/manage.py createcachetable
+python banzai_floyds_ui/manage.py collectstatic
 python banzai_floyds_ui/manage.py runserver 8080
 ```
-or via the docker file using
-```
-docker build -t banzai-floyds-ui
-docker run --rm -p 8080:8080 banzai-floyds-ui
-```
 
-And then point your browser to [http://127.0.0.1:8080/](http://127.0.0.1:8080/) for the API root of the project.
-The main dashboard can be found at [http://127.0.0.1:8080/banzai-floyds](http://127.0.0.1:8080/banzai-floyds).
+[//]: # (or via the docker file using)
+
+[//]: # (```)
+
+[//]: # (docker build -t banzai-floyds-ui)
+
+[//]: # (docker run --rm -p 8080:8080 banzai-floyds-ui)
+
+[//]: # (```)
+
+And then point your browser to [http://127.0.0.1:8080/](http://127.0.0.1:8080/) to visit the project dashboard.
 
 K8s Deployment
 --------------
