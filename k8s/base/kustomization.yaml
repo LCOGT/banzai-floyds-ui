@@ -16,7 +16,7 @@ configMapGenerator:
       - REDIS_HOST=redis-service
       - REDIS_PORT=6379
       - DEBUG=1
-      - DB_ADDRESS=sqlite:///test.db
+      - BANZAI_DB_ADDRESS=sqlite:///test.db
       - OPENTSDB_PYTHON_METRICS_TEST_MODE=1
       - GUNICORN_WORKERS=4
       - GUNICORN_TIMEOUT=300

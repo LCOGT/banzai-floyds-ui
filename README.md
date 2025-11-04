@@ -44,7 +44,7 @@ To run this in a more production-like deployment, you can use skaffold.
 nix develop --impure
 ctlptl apply -f local-cluster.yaml
 ctlptl apply -f local-registry.yaml
-kubectl create secret generic lco-local-secrets --from-literal=auth-token=${AUTH_TOKEN} --from-literal=aws-access-key-id=${AWS_ACCESS_KEY_ID} --from-literal=aws-secret-access-key=${AWS_SECRET_ACCESS_KEY} --from-literal=banzai-db-address=${DB_ADDRESS}
+kubectl create secret generic lco-local-secrets --from-literal=auth-token=${AUTH_TOKEN} --from-literal=aws-access-key-id=${AWS_ACCESS_KEY_ID} --from-literal=aws-secret-access-key=${AWS_SECRET_ACCESS_KEY} --from-literal=banzai-db-address=${BANZAI_DB_ADDRESS}
 skaffold -m app dev --port-forward
 ```
 Development

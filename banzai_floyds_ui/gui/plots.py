@@ -4,7 +4,6 @@ from banzai_floyds_ui.gui.utils.header_utils import header_to_polynomial
 import plotly.graph_objects as go
 
 import numpy as np
-from numpy.polynomial.legendre import Legendre
 from banzai_floyds.orders import orders_from_fits
 from banzai_floyds.arc_lines import used_lines as arc_lines
 from banzai_floyds.utils.wavelength_utils import WavelengthSolution
