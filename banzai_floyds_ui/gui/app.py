@@ -233,8 +233,8 @@ def layout():
 app.layout = layout
 
 
-@app.expanded_callback([dash.dependencies.Output('file-list-dropdown', 'options'),
-                        dash.dependencies.Output('file-list-metadata', 'data')],
+@app.expanded_callback([Output('file-list-dropdown', 'options'),
+                        Output('file-list-metadata', 'data')],
                        [dash.dependencies.Input('date-range-picker', 'start_date'),
                         dash.dependencies.Input('date-range-picker', 'end_date'),
                         dash.dependencies.Input('site-picker', 'value')])
@@ -330,7 +330,7 @@ app.clientside_callback(
 )
 
 
-@app.expanded_callback(dash.dependencies.Output('extraction-traces', 'data'),
+@app.expanded_callback(Output('extraction-traces', 'data'),
                        dash.dependencies.Input('extraction-positions', 'data'),
                        dash.dependencies.State('initial-extraction-info', 'data'),
                        prevent_initial_call=True)
@@ -401,7 +401,7 @@ def callback_make_plots(*args, **kwargs):
         combined_sci_plot, initial_extraction_info
 
 
-@app.expanded_callback(dash.dependencies.Output('extraction-positions', 'data'),
+@app.expanded_callback(Output('extraction-positions', 'data'),
                        [dash.dependencies.Input('initial-extraction-info', 'data'),
                         dash.dependencies.Input('profile-plot', 'relayoutData')],
                        dash.dependencies.State('extraction-positions', 'data'),
@@ -514,10 +514,10 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
 
 # Note we include a container here for the extraction plots that always returns no update
 # We have to do this to get the loading spinner to trigger during the re-extraction
-@app.expanded_callback([dash.dependencies.Output('extractions', 'data'),
-                        dash.dependencies.Output('combined-extraction', 'data'),
-                        dash.dependencies.Output('error-extract-failed-modal', 'is_open'),
-                        dash.dependencies.Output('extraction-plot-container', 'children')],
+@app.expanded_callback([Output('extractions', 'data'),
+                        Output('combined-extraction', 'data'),
+                        Output('error-extract-failed-modal', 'is_open'),
+                        Output('extraction-plot-container', 'children')],
                        dash.dependencies.Input('extract-button', 'n_clicks'),
                        [dash.dependencies.State('extraction-positions', 'data'),
                         dash.dependencies.State('extraction-type', 'value'),
@@ -584,8 +584,8 @@ app.clientside_callback(
     prevent_initial_call=True)
 
 
-@app.expanded_callback([dash.dependencies.Output("error-logged-in-modal", "is_open"),
-                        dash.dependencies.Output('error-extract-failed-on-save-modal', 'is_open')],
+@app.expanded_callback([Output("error-logged-in-modal", "is_open"),
+                        Output('error-extract-failed-on-save-modal', 'is_open')],
                        dash.dependencies.Input('save-button', 'n_clicks'),
                        prevent_initial_call=True)
 def save_extraction(n_clicks, **kwargs):

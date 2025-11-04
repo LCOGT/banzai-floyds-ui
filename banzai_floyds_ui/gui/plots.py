@@ -1,7 +1,6 @@
 import importlib.resources
 from astropy.table import Table
 from banzai_floyds_ui.gui.utils.header_utils import header_to_polynomial
-import plotly.graph_objects as go
 
 import numpy as np
 from banzai_floyds.orders import orders_from_fits
@@ -198,8 +197,8 @@ def make_arc_line_plots(arc_frame_hdu):
     layout['xaxis4']['title'] = {'text': f'Wavelength ({ANGSTROM})'}
     layout['yaxis2']['side'] = 'right'
     layout['yaxis4']['side'] = 'right'
-    layout['yaxis']['title'] = {'text': 'Flux (counts)'}
-    layout['yaxis3']['title'] = {'text': f'Residuals ({ANGSTROM})'}
+    layout['yaxis2']['title'] = {'text': 'Flux (counts)'}
+    layout['yaxis4']['title'] = {'text': f'Residuals ({ANGSTROM})'}
     layout['xaxis3']['tickformat'] = '.0f'
     layout['xaxis4']['tickformat'] = '.0f'
 
