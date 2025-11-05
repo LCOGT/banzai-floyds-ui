@@ -9,6 +9,7 @@ on:
 
 jobs:
   cd:
-    group: massive
+    runs-on:
+      group: massive
     uses: LCOGT/reusable-workflows/.github/workflows/continuous-deployment.yaml@main
     secrets: inherit
