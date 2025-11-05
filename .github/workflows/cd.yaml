@@ -12,5 +12,6 @@ jobs:
     runs-on:
       group: massive
     steps:
-     - uses: LCOGT/reusable-workflows/.github/workflows/continuous-deployment.yaml@main
-    secrets: inherit
+      - uses: LCOGT/reusable-workflows/.github/workflows/continuous-deployment.yaml@main
+        with:
+          secrets: inherit
