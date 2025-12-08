@@ -1,55 +1,63 @@
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0",
-            "cython", "extension-helpers",
-            "numpy>=1.24"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
-version = "0.5.2"
 name = "banzai_floyds_ui"
-requires-python = ">=3.10,<4"
+version = "0.5.2"
 description = "UI for BANZAI Data Reduction for FLOYDS spectra"
+requires-python = ">=3.10,<4"
 readme = "README.md"
-
 dependencies = [
-  "django",
-  "dash>=2.17",
-  "plotly",
-  "django-plotly-dash>=2.3.2",
-  "astropy",
-  "lcogt_logging",
-  "gunicorn",
-  "gevent",
-  "django-rest-framework",
-  "django-bootstrap4",
-  "dpd_static_support",
-  "dash-bootstrap-components",
-  "fontawesomefree",
-  "requests",
-  "django_redis",
-  "django_extensions",
-  "whitenoise",
-  "httpx",
-  "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.22.0",
-  "scipy"
+    "django",
+    "dash>=2.17",
+    "plotly",
+    "django-plotly-dash>=2.3.2",
+    "astropy",
+    "lcogt_logging",
+    "gunicorn",
+    "gevent",
+    "django-rest-framework",
+    "django-bootstrap4",
+    "dpd_static_support",
+    "dash-bootstrap-components",
+    "fontawesomefree",
+    "requests",
+    "django_redis",
+    "django_extensions",
+    "whitenoise",
+    "httpx",
+    "banzai_floyds @ git+https://github.com/lcogt/banzai-floyds@0.22.0",
+    "scipy",
+    "torch",
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [project.optional-dependencies]
-test = [
-    "flask"
-]
+test = ["flask"]
 
-[tool.poetry]
-packages = [
-  { include = "banzai_floyds_ui" }
-]
+[tool.uv]
 
-[tool.poetry.dependencies]
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
 torch = [
-    { version = "^2.3", source = "pytorch-cpu"},
+  { index = "pytorch-cpu", marker = "sys_platform != 'darwin' and extra != 'cuda'" },
+  { index = "pytorch-cuda", marker = "sys_platform != 'darwin' and extra == 'cuda'" },
 ]
 
-[[tool.poetry.source]]
-    name     = "pytorch-cpu"
-    priority = "explicit"
-    url      = "https://download.pytorch.org/whl/cpu"
+[tool.hatch.build.targets.sdist]
+include = ["banzai_floyds_ui"]
+
+[tool.hatch.build.targets.wheel]
+include = ["banzai_floyds_ui"]

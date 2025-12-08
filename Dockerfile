@@ -1,16 +1,27 @@
+# syntax=docker/dockerfile:1
+
 FROM ghcr.io/lcogt/banzai-floyds:0.17.1
 
 USER root
 
-RUN poetry config virtualenvs.create false
+RUN apt-get update && apt-get install -y git
 
-COPY pyproject.toml poetry.lock /banzai-floyds-ui/
+COPY --from=ghcr.io/astral-sh/uv:0.9.16 /uv /uvx /bin/
 
-RUN poetry install --directory=/banzai-floyds-ui --no-root --no-cache
+WORKDIR /banzai-floyds-ui
 
-COPY . /banzai-floyds-ui
+ENV UV_PYTHON_DOWNLOADS=never
 
-RUN poetry install --directory /banzai-floyds-ui --no-cache
+RUN --mount=type=cache,target=/root/.cache \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv venv --system-site-packages && uv sync --locked --no-dev --no-install-project
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache uv sync --locked --no-dev
+
+ENV PATH="/banzai-floyds-ui/.venv/bin:$PATH"
 
 WORKDIR /banzai-floyds-ui/banzai_floyds_ui/
 

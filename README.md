@@ -4,8 +4,15 @@ User interface for re-extraction using [BANZAI-FLOYDS](https://github.com/LCOGT/
 
 Installation
 ------------
+Project is managed with [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
 ```
-poetry install
+uv sync
+
+# Activate the venv
+source .venv/bin/activate
+# Or run commands using uv
+uv run python banzai_floyds_ui/manage.py ...
 ```
 
 Deployment
