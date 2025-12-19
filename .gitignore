@@ -166,3 +166,5 @@ dump*
 local-kubeconfig
 
 staticfiles
+
+.DS_Store
