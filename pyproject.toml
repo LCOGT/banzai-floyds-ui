@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "banzai_floyds_ui"
-version = "0.5.2"
+version = "0.6.0"
 description = "UI for BANZAI Data Reduction for FLOYDS spectra"
 requires-python = ">=3.10,<4"
 readme = "README.md"

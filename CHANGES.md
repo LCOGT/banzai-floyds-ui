@@ -1,3 +1,18 @@
+0.6.0 (2026-02-12)
+------------------
+- Added documentation about using the UI.
+
+0.5.1 (2025-12-08)
+------------------
+- Switched to uv for dependency management.
+
+0.5.0 (2025-11-04)
+------------------
+- General Cleanup
+
+0.4.1 (2025-11-04)
+- Readme improvments
+
 0.4.0 (2025-05-27)
 ------------------
 - Bugfix to saving re-extractions
