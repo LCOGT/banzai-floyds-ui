@@ -1,6 +1,6 @@
 Re-Extraction GUI
 =================
-The BANZAI-FLOYDS Re-Extraction GUI (Graphical User Interface) allows users to re-extract their data using a different weighting scheme (optimal vs un-weighted) and to choose the precise region used for the extraction for the background estimation.
+The BANZAI-FLOYDS Re-Extraction GUI (Graphical User Interface) allows users to re-extract their data using a different weighting scheme (optimal vs unweighted) and to choose the precise region used for the extraction for the background estimation.
 
 File Selection
 --------------
@@ -34,4 +34,4 @@ Extraction
 .. image:: combined-extraction.png
     :width: 100%
     :alt: Combined blue and red arm extraction
-The next section shows the 1d extraction results of the re-extraction. These plots are updated everytime the re-extract button is pressed. The plots show the flux corrected, raw extracted, and background for each arm of the spectrum. Finally, we display the combined, flux corrected spectrum. Once the user is satified with the extraction, they can click the save button. This will post to the re-extracted spectrum to the normal Las Cumbres Observatory archive. If the user downloads the file again, it will default to the newest, re-extracted version. Other versions are avaiable through the API.
+The next section shows the 1d extraction results of the re-extraction. These plots are updated every time the re-extract button is pressed. The plots show the flux corrected, raw extracted, and background for each arm of the spectrum. Finally, we display the combined, flux corrected spectrum. Once the user is satisfied with the extraction, they can click the save button. This will post to the re-extracted spectrum to the normal Las Cumbres Observatory archive. A user can only save an extraction if they are logged in. If the user downloads the file again, it will default to the newest, re-extracted version. Other versions are available through the archive API.
