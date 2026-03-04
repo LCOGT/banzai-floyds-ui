@@ -1,3 +1,7 @@
+0.6.1 (2026-03-04)
+------------------
+- Documentation formatting fix
+
 0.6.0 (2026-02-12)
 ------------------
 - Added documentation about using the UI.
