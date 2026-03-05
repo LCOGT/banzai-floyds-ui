@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/lcogt/banzai-floyds:0.17.1
+FROM ghcr.io/lcogt/banzai-floyds:1.0.1
 
 USER root
 
