@@ -172,8 +172,8 @@ wheels = [
 
 [[package]]
 name = "banzai-floyds"
-version = "0.26.0"
-source = { git = "https://github.com/lcogt/banzai-floyds?rev=0.26.0#bdaaf951d6c19f6cc9ee090e338bac2f3c7569b6" }
+version = "1.0.1"
+source = { git = "https://github.com/lcogt/banzai-floyds?rev=1.0.1#a9613e6e6e9a01a57eab57d814af2400c7486d65" }
 dependencies = [
     { name = "alembic" },
     { name = "astropy" },
@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "banzai-floyds-ui"
-version = "0.6.1"
+version = "0.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "astropy" },
@@ -225,7 +225,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "astropy" },
-    { name = "banzai-floyds", git = "https://github.com/lcogt/banzai-floyds?rev=0.26.0" },
+    { name = "banzai-floyds", git = "https://github.com/lcogt/banzai-floyds?rev=1.0.1" },
     { name = "dash", specifier = ">=2.17" },
     { name = "dash-bootstrap-components" },
     { name = "django" },
@@ -1634,8 +1634,8 @@ wheels = [
 
 [[package]]
 name = "lco-banzai"
-version = "1.29.0"
-source = { git = "https://github.com/lcogt/banzai.git?rev=1.29.0#a8fca2baccab2bb333b7625752eff312741eaef2" }
+version = "1.30.0"
+source = { git = "https://github.com/lcogt/banzai.git?rev=1.30.0#518a7e5c19a80ff8c3ccc334399c56a3c5e4edf9" }
 dependencies = [
     { name = "apscheduler" },
     { name = "astropy" },

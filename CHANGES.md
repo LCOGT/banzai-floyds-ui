@@ -1,3 +1,7 @@
+0.6.2 (2026-03-05)
+------------------
+- Bumping banzai floyds version to get upstream updates
+
 0.6.1 (2026-03-04)
 ------------------
 - Documentation formatting fix
