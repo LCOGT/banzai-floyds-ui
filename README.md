@@ -22,6 +22,8 @@ You can run a local development version.
 You will want to set a `BANZAI_DB_ADDRESS` environment variable that points to the location of a DB with Banzai Data.
 This can be either a local DB with some test data stored in it, or the production DB.
 
+You will also want to set an `API_ROOT` environment variable that points to the archive.
+
 Next,run the following commands to prepare the project and run a local server.
 
 ```
