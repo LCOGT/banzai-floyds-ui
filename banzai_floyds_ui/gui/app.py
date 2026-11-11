@@ -3,10 +3,7 @@ from dash import dcc, html, Output
 import dash_bootstrap_components as dbc
 from django_plotly_dash import DjangoDash
 import datetime
-import requests
 import asyncio
-from banzai_floyds_ui.gui.utils.file_utils import download_frame
-from banzai_floyds_ui.gui.utils.file_utils import fetch_all, get_related_frame
 from banzai_floyds_ui.gui.plots import make_1d_sci_plot, make_2d_sci_plot, make_arc_2d_plot, make_arc_line_plots
 from banzai_floyds_ui.gui.plots import make_profile_plot, make_combined_extraction_plot
 from banzai_floyds_ui.gui.utils import file_utils
@@ -18,12 +15,11 @@ from banzai.utils import import_utils
 from banzai.utils.stage_utils import get_stages_for_individual_frame
 from banzai_floyds.frames import FLOYDSFrameFactory
 from banzai_floyds import settings
-from django.conf import settings as django_settings
 import os
 import banzai.main
 import io
+from uuid import uuid4
 from banzai.logs import get_logger
-from django.core.cache import cache
 
 
 logger = get_logger()
@@ -41,6 +37,13 @@ settings.db_address = os.environ['BANZAI_DB_ADDRESS']
 settings.cal_db_address = os.environ['BANZAI_DB_ADDRESS']
 
 RUNTIME_CONTEXT = banzai.main.parse_args(settings, parse_system_args=False)
+
+
+def archive_header_from_session(session_state):
+    auth_token = session_state.get('auth_token')
+    if auth_token is None:
+        return None
+    return {'Authorization': f'Token {auth_token}'}
 
 
 def layout():
@@ -65,7 +68,7 @@ def layout():
                     ),
                     dbc.Modal([
                             dbc.ModalHeader(dbc.ModalTitle("Error"), className='bg-danger text-white'),
-                            dbc.ModalBody("Error extracting spectrum. Plots may not reflect extraction paramters."),
+                            dbc.ModalBody("Error extracting spectrum. Plots may not reflect extraction parameters."),
                         ],
                         id="error-extract-failed-modal",
                         is_open=False,
@@ -123,6 +126,8 @@ def layout():
                 id='plot-container',
                 children=[
                     dcc.Store(id='initial-extraction-info'),
+                    dcc.Store(id='arc-frame-id'),
+                    dcc.Store(id='extraction-frame-id'),
                     dcc.Store(id='file-list-metadata'),
                     dcc.Store(id='extraction-positions'),
                     dcc.Store(id='extraction-traces'),
@@ -199,7 +204,7 @@ def layout():
                                               "value":'Unweighted'}],
                                             'Optimal', inline=True, id='extraction-type',
                                             ),
-                             dbc.Button('Re-Extract', id='extract-button')]),
+                             dbc.Button('Re-Extract', id='extract-button', disabled=True)]),
                     html.Div([
                         html.H3(['Extractions:',
                                  html.A('?',
@@ -250,22 +255,16 @@ def callback_dropdown_files(*args, **kwargs):
     else:
         instrument_ids = [instrument_id]
 
-    if kwargs['session_state'].get('auth_token') is not None:
-        archive_header = {'Authorization': f'Token {kwargs["session_state"]["auth_token"]}'}
-    else:
-        archive_header = None
+    archive_header = archive_header_from_session(kwargs['session_state'])
+    limit = 150 if archive_header is not None else 50
 
-    request_params = [{'start': start_date, 'end': end_date, 'public': True, 'limit': 150,
+    request_params = [{'start': start_date, 'end': end_date, 'public': True, 'limit': limit,
                        'instrument_id': instrument_id, 'RLEVEL': 91, 'basename': '1d'}
                       for instrument_id in instrument_ids]
-    responses = asyncio.run(fetch_all(archive_header, request_params))
+    responses = asyncio.run(file_utils.fetch_all(archive_header, request_params))
     results = []
     for response in responses:
-        try:
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"Failed to fetch data from archive: {e}. {response.content}")
-            return
+        response.raise_for_status()
         data = response.json()['results']
         results += [{'label': f'{row["filename"]} {row["OBJECT"]} {row["PROPID"]}', 'value': row['id']} for row in data]
     results.sort(key=lambda x: x['label'])
@@ -363,44 +362,81 @@ def on_extraction_region_update(extraction_positions, initial_extraction_info):
 @app.expanded_callback(
     [Output('arc-2d-plot', 'figure'),
      Output('arc-1d-plot', 'figure'),
-     Output('sci-2d-plot', 'figure'),
-     Output('profile-plot', 'figure'),
-     Output('extraction-plot', 'figure'),
-     Output('combined-extraction-plot', 'figure'),
-     Output('initial-extraction-info', 'data')],
+     Output('arc-frame-id', 'data')],
     dash.dependencies.Input('file-list-dropdown', 'value'), prevent_initial_call=True)
-def callback_make_plots(*args, **kwargs):
-    frame_id = args[0]
+def callback_make_arc_plots(frame_id, **kwargs):
     if frame_id is None:
         raise PreventUpdate
-    if kwargs['session_state'].get('auth_token') is not None:
-        archive_header = {'Authorization': f'Token {kwargs["session_state"]["auth_token"]}'}
-    else:
-        archive_header = None
+    archive_header = archive_header_from_session(kwargs['session_state'])
 
-    # TODO: All of of these should be async so things load faster
-    arc_frame, arc_filename = get_related_frame(frame_id, archive_header, 'L1IDARC')
+    arc_frame, arc_filename = asyncio.run(
+        file_utils.async_fetch_plot_frame(frame_id, archive_header, 'L1IDARC')
+    )
+
     arc_image_plot = make_arc_2d_plot(arc_frame, arc_filename)
     arc_line_plot = make_arc_line_plots(arc_frame)
 
-    sci_2d_frame, sci_2d_filename = get_related_frame(frame_id, archive_header, 'L1ID2D')
-    sci_2d_plot, extraction_data = make_2d_sci_plot(sci_2d_frame, sci_2d_filename)
+    return arc_image_plot, arc_line_plot, frame_id
 
-    file_utils.cache_fits('science_2d_frame', sci_2d_frame)
-    cache.set('filename', sci_2d_frame['SCI'].header['ORIGNAME'])
+
+# Chain the sections using small stores so the preceding plots can render first.
+@app.expanded_callback(
+    [Output('sci-2d-plot', 'figure'),
+     Output('profile-plot', 'figure'),
+     Output('initial-extraction-info', 'data')],
+    dash.dependencies.Input('arc-frame-id', 'data'),
+    dash.dependencies.State('file-list-dropdown', 'value'), prevent_initial_call=True)
+def callback_make_profile_plots(frame_id, selected_frame_id, **kwargs):
+    if frame_id is None or frame_id != selected_frame_id:
+        raise PreventUpdate
+    archive_header = archive_header_from_session(kwargs['session_state'])
+    sci_2d_frame, sci_2d_filename = asyncio.run(
+        file_utils.async_fetch_plot_frame(frame_id, archive_header, 'L1ID2D')
+    )
+    sci_2d_plot, extraction_data = make_2d_sci_plot(sci_2d_frame, sci_2d_filename)
 
     profile_plot, initial_extraction_info = make_profile_plot(sci_2d_frame)
 
     for key in extraction_data:
         initial_extraction_info[key] = extraction_data[key]
 
-    frame_1d = download_frame(url=f'{django_settings.ARCHIVE_URL}{frame_id}/', headers=archive_header)
+    initial_extraction_info['frame_id'] = frame_id
+    initial_extraction_info['filename'] = sci_2d_frame['SCI'].header['ORIGNAME']
+    initial_extraction_info['cache_key'] = str(uuid4())
+    file_utils.cache_fits(f"science_2d_frame:{initial_extraction_info['cache_key']}", sci_2d_frame, timeout=3600)
 
+    return sci_2d_plot, profile_plot, initial_extraction_info
+
+
+@app.expanded_callback(
+    [Output('extraction-plot', 'figure'),
+     Output('combined-extraction-plot', 'figure'),
+     Output('extraction-frame-id', 'data')],
+    dash.dependencies.Input('initial-extraction-info', 'data'),
+    dash.dependencies.State('file-list-dropdown', 'value'), prevent_initial_call=True)
+def callback_make_extraction_plots(initial_extraction_info, selected_frame_id, **kwargs):
+    if not initial_extraction_info or initial_extraction_info['frame_id'] != selected_frame_id:
+        raise PreventUpdate
+    frame_id = initial_extraction_info['frame_id']
+    archive_header = archive_header_from_session(kwargs['session_state'])
+    frame_1d = asyncio.run(file_utils.async_fetch_plot_frame(frame_id, archive_header))
     sci_1d_plot = make_1d_sci_plot(frame_1d)
     combined_sci_plot = make_combined_extraction_plot(frame_1d)
 
-    return arc_image_plot, arc_line_plot, sci_2d_plot, profile_plot, sci_1d_plot, \
-        combined_sci_plot, initial_extraction_info
+    return sci_1d_plot, combined_sci_plot, frame_id
+
+
+app.clientside_callback(
+    """
+    function(frame_id, initial_info, extraction_frame_id) {
+        return !initial_info || frame_id == null || initial_info.frame_id !== frame_id
+            || extraction_frame_id !== frame_id;
+    }
+    """,
+    Output('extract-button', 'disabled'),
+    [dash.dependencies.Input('file-list-dropdown', 'value'),
+     dash.dependencies.Input('initial-extraction-info', 'data'),
+     dash.dependencies.Input('extraction-frame-id', 'data')])
 
 
 @app.expanded_callback(Output('extraction-positions', 'data'),
@@ -422,7 +458,7 @@ def update_extraction_positions(initial_extraction_info, relayout_data, current_
                 extraction_positions[str(order)][line] = initial_extraction_info["positions"][str(order)][line]
         return extraction_positions
     # Otherwise we are in the relayout data case
-    if current_extraction_positions is None:
+    if current_extraction_positions is None or not relayout_data:
         raise PreventUpdate
     key_with_update = None
     for key in relayout_data:
@@ -461,6 +497,12 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
     buffer.seek(0)
     file_info = {'filename': filename, 'data_buffer': buffer}
     frame = factory.open(file_info, runtime_context)
+    if frame is None:
+        return
+    # The saved BINNED2D mask includes the previous extraction's wavelength trim.
+    # Restore the pixel mask so background fitting has data in those edge bins.
+    x, y = frame.binned_data['x'].astype(int), frame.binned_data['y'].astype(int)
+    frame.binned_data['mask'] = frame.mask[y, x]
     # reset the weights and the background region
     centers, widths = frame.profile_fits
     for order in [1, 2]:
@@ -499,7 +541,7 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
                                                    last_stage=runtime_context.LAST_STAGE[frame.obstype.upper()],
                                                    extra_stages=runtime_context.EXTRA_STAGES[frame.obstype.upper()])
 
-    # Starting at the extraction weights stage
+    # Refit the background after moving the profile or background regions.
     start_index = stages_to_do.index('banzai_floyds.background.BackgroundFitter')
     stages_to_do = stages_to_do[start_index:]
     frames = [frame]
@@ -508,7 +550,7 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
         stage = stage_constructor(runtime_context)
         frames = stage.run(frames)
         if not frames:
-            logger.error('Reduction stopped', extra_tags={'filename': filename})
+            logger.error(f'Reduction stopped at {stage_name}', extra_tags={'filename': filename})
             return
     logger.info('Reduction complete', extra_tags={'filename': filename})
     return frames[0]
@@ -523,22 +565,32 @@ def reextract(hdu, filename, extraction_positions, initial_extraction_info, runt
                        dash.dependencies.Input('extract-button', 'n_clicks'),
                        [dash.dependencies.State('extraction-positions', 'data'),
                         dash.dependencies.State('extraction-type', 'value'),
-                       dash.dependencies.State('initial-extraction-info', 'data')],
+                        dash.dependencies.State('initial-extraction-info', 'data'),
+                        dash.dependencies.State('file-list-dropdown', 'value'),
+                        dash.dependencies.State('extraction-frame-id', 'data')],
                        prevent_initial_call=True)
-def trigger_reextract(n_clicks, extraction_positions, extraction_type, initial_extraction_info):
-    if not n_clicks:
+def trigger_reextract(n_clicks, extraction_positions, extraction_type, initial_extraction_info,
+                      selected_frame_id, extraction_frame_id, **kwargs):
+    if not n_clicks or not extraction_positions or not initial_extraction_info:
         raise PreventUpdate
-    science_frame = file_utils.get_cached_fits('science_2d_frame')
+    if initial_extraction_info['frame_id'] != selected_frame_id or extraction_frame_id != selected_frame_id:
+        raise PreventUpdate
+    cache_key = initial_extraction_info['cache_key']
+    science_frame = file_utils.get_cached_fits(f'science_2d_frame:{cache_key}')
     if science_frame is None:
-        raise PreventUpdate
-    filename = cache.get('filename')
+        archive_header = archive_header_from_session(kwargs['session_state'])
+        science_frame, _ = asyncio.run(
+            file_utils.async_fetch_plot_frame(selected_frame_id, archive_header, 'L1ID2D')
+        )
+        file_utils.cache_fits(f'science_2d_frame:{cache_key}', science_frame, timeout=3600)
+    filename = initial_extraction_info['filename']
     frame = reextract(science_frame, filename, extraction_positions, initial_extraction_info,
                       RUNTIME_CONTEXT, extraction_type=extraction_type.lower())
 
     if frame is None:
         return dash.no_update, dash.no_update, True, dash.no_update
 
-    file_utils.cache_frame('reextracted_frame', frame)
+    file_utils.cache_frame(f'reextracted_frame:{cache_key}', frame, timeout=3600)
     x = []
     y = []
     for order in [2, 1]:
@@ -546,7 +598,7 @@ def trigger_reextract(n_clicks, extraction_positions, extraction_type, initial_e
         for flux in ['flux', 'fluxraw', 'background']:
             x.append(frame.extracted['wavelength'][where_order])
             y.append(frame.extracted[flux][where_order])
-    return {'x': x, 'y': y}, {'x': frame.spectrum['wavelength'], 'y': frame.spectrum['flux']}, False, dash.no_update
+    return {'x': x, 'y': y}, {'x': [frame.spectrum['wavelength']], 'y': [frame.spectrum['flux']]}, False, dash.no_update
 
 
 app.clientside_callback(
@@ -572,7 +624,7 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(combined_extraction_data) {
-        if (typeof extraction_data === "undefined") {
+        if (typeof combined_extraction_data === "undefined") {
             return window.dash_clientside.no_update;
         }
         var dccGraph = document.getElementById('combined-extraction-plot');
@@ -589,8 +641,10 @@ app.clientside_callback(
 @app.expanded_callback([Output("error-logged-in-modal", "is_open"),
                         Output('error-extract-failed-on-save-modal', 'is_open')],
                        dash.dependencies.Input('save-button', 'n_clicks'),
+                       [dash.dependencies.State('initial-extraction-info', 'data'),
+                        dash.dependencies.State('file-list-dropdown', 'value')],
                        prevent_initial_call=True)
-def save_extraction(n_clicks, **kwargs):
+def save_extraction(n_clicks, initial_extraction_info, selected_frame_id, **kwargs):
     if not n_clicks:
         raise PreventUpdate
 
@@ -600,7 +654,9 @@ def save_extraction(n_clicks, **kwargs):
         return True, dash.no_update
 
     # Run the reextraction
-    extracted_frame = file_utils.get_cached_frame('reextracted_frame')
+    if not initial_extraction_info or initial_extraction_info['frame_id'] != selected_frame_id:
+        return dash.no_update, True
+    extracted_frame = file_utils.get_cached_frame(f"reextracted_frame:{initial_extraction_info['cache_key']}")
     if extracted_frame is None:
         return dash.no_update, True
 
